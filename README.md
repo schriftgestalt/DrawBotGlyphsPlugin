@@ -8,7 +8,7 @@ Make a new drawBot from the File menu > New DrawBot, or open a file with cmd+O. 
 
 To save a drawing as pdf, hit cmd+E (or File > Export..)
 
-# Installation and requirements
+## Installation and requirements
 
 To install, double click the `DrawBot.glyphsPlugin` file. 
 
@@ -17,10 +17,10 @@ The plugin needs these packages. They can be installed from within Glyphs in Pre
 * [robofab](https://github.com/robofab-developers/robofab)
 * [fontTools](http://sourceforge.net/projects/fonttools/)
 
-## Includes 
+### Includes 
 * [DrawBot](http://drawbot.readthedocs.org/) 
 * [pygments](http://pygments.org)
 
-# Many thanks to:
+## Many thanks to:
 - Just van Rossum, Erik van Blokland, Frederik Berlaen for making DrawBot.
 - [Jens Kutilek](http://www.kutilek.de) for helping with implementing the plugin.
