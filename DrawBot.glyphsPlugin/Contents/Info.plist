@@ -40,9 +40,9 @@
 		</dict>
 	</array>
 	<key>UpdateFeedURL</key>
-	<string>____OnlineUrlToThisPlist____</string>
+	<string>https://raw.githubusercontent.com/schriftgestalt/DrawBotGlyphsPlugin/master/DrawBot.glyphsPlugin/Contents/Info.plist</string>
 	<key>productPageURL</key>
-	<string>____ProductPageURL____</string>
+	<string>https://github.com/schriftgestalt/DrawBotGlyphsPlugin</string>
 	<key>productReleaseNotes</key>
 	<string>____LatestReleaseNotes____</string>
 	<key>LSHasLocalizedDisplayName</key>
@@ -51,8 +51,6 @@
 	<false/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright, Georg Seifert, 2015</string>
-	<key>NSMainNibFile</key>
-	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>DrawBot</string>
 	<key>PyMainFileNames</key>
