@@ -9,7 +9,6 @@ import __future__
 
 from objectsGS import CurrentFont, CurrentGlyph
 from GlyphsApp import GetSaveFile
-from fontTools.pens.cocoaPen import CocoaPen
 
 from drawBot.drawBotDrawingTools import _drawBotDrawingTool
 from drawBot.context.baseContext import BezierPath
@@ -17,26 +16,14 @@ from drawBot.context.baseContext import BezierPath
 sys.path.append(os.path.dirname(__file__))
 
 def drawGlyph(glyph):
-	if hasattr(glyph, "getRepresentation"):
-		path = glyph.getRepresentation("defconAppKit.NSBezierPath")
-	else:
-		pen = CocoaPen(glyph.getParent())
-		glyph.draw(pen)
-		path = pen.path
-	_drawBotDrawingTool.drawPath(path)
+	_drawBotDrawingTool.drawPath(glyph._layer.bezierPath())
 
 _drawBotDrawingTool.drawGlyph = drawGlyph
 
 class RFBezierPath(BezierPath):
 
 	def addGlyph(self, glyph):
-		if hasattr(glyph, "getRepresentation"):
-			path = glyph.getRepresentation("defconAppKit.NSBezierPath")
-		else:
-			pen = CocoaPen(glyph.getParent())
-			glyph.draw(pen)
-			path = pen.path
-		self.getNSBezierPath().appendBezierPath_(path)
+		self.getNSBezierPath().appendBezierPath_(glyph._layer.bezierPath())
 
 _drawBotDrawingTool._bezierPathClass = RFBezierPath
 
@@ -50,7 +37,6 @@ import sys
 import traceback
 
 from vanilla import *
-from defconAppKit.windows.baseWindow import BaseWindowController
 
 from drawBot.ui.drawView import DrawView, ThumbnailView
 
