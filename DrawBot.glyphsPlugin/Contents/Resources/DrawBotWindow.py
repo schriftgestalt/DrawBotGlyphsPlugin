@@ -161,7 +161,11 @@ class GlyphsDrawBotController(NSWindowController):
 			code = self.document().text
 			print "__runCode 1", code
 			# get the path of the document (will be None for an untitled document)
-			path = self.document().fileURL().path()
+			path = None
+			try:
+				path = self.document().fileURL().path()
+			except:
+				pass
 			print "__runCode 2", path
 			# reset the internal warning system
 			warnings.resetWarnings()
