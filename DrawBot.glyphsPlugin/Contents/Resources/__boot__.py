@@ -8,4 +8,4 @@ def _run(script):
 	__file__ = path
 	execfile(path, globals(), globals())
 
-_run('DrawBot.py')
+_run('DrawBotDocument.py')

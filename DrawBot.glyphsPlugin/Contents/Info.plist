@@ -36,7 +36,7 @@
 				<string>public.python-script</string>
 			</array>
 			<key>NSDocumentClass</key>
-			<string>DrawBot</string>
+			<string>DrawBotDocument</string>
 		</dict>
 	</array>
 	<key>UpdateFeedURL</key>
@@ -52,7 +52,7 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright, Georg Seifert, 2015</string>
 	<key>NSPrincipalClass</key>
-	<string>DrawBot</string>
+	<string>DrawBotDocument</string>
 	<key>PyMainFileNames</key>
 	<array>
 		<string>__boot__</string>

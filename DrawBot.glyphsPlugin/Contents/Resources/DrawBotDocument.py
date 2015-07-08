@@ -17,7 +17,7 @@ import GlyphsApp
 
 GlyphsPluginProtocol = objc.protocolNamed( "GlyphsPlugin" )
 
-class DrawBot ( NSDocument, GlyphsPluginProtocol ):
+class DrawBotDocument ( NSDocument, GlyphsPluginProtocol ):
 	
 	def init( self ):
 		"""
@@ -25,7 +25,7 @@ class DrawBot ( NSDocument, GlyphsPluginProtocol ):
 		Do all initializing here.
 		"""
 		self.text = ""
-		self = super(DrawBot, self).init()
+		self = super(DrawBotDocument, self).init()
 		return self
 	
 	def loadPlugin(self):
