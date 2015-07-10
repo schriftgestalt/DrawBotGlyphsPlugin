@@ -10,7 +10,7 @@ To save a drawing as pdf, hit cmd+E (or File > Export..)
 
 ## Installation and requirements
 
-To install, double click the `DrawBot.glyphsPlugin` file. 
+To install, double click the `DrawBot.glyphsPlugin` file. It requires at least Glyphs 2.1.1 (777).
 
 The plugin needs these packages. They can be installed from within Glyphs in Preferences > Addons.
 * [vanilla](https://github.com/typesupply/vanilla) 
