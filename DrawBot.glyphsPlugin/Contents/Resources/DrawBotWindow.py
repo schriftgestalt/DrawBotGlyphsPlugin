@@ -1,4 +1,4 @@
-from AppKit import NSWindowController, NSToolbarFlexibleSpaceItemIdentifier, NSToolbarSpaceItemIdentifier, NSContinuouslyUpdatesValueBindingOption, NSImage, NSString, NSShadow, NSFont, NSFontAttributeName, NSForegroundColorAttributeName, NSShadowAttributeName, NSDocumentController
+from AppKit import NSWindowController, NSToolbarFlexibleSpaceItemIdentifier, NSToolbarSpaceItemIdentifier, NSContinuouslyUpdatesValueBindingOption, NSImage, NSString, NSShadow, NSFont, NSFontAttributeName, NSForegroundColorAttributeName, NSShadowAttributeName, NSDocumentController, NSBezierPath
 
 from Foundation import NSUserDefaults
 
@@ -16,16 +16,30 @@ from drawBot.context.baseContext import BezierPath
 sys.path.append(os.path.dirname(__file__))
 
 def drawGlyph(glyph):
-	_drawBotDrawingTool.drawPath(glyph._layer.bezierPath())
+	BezierPath = glyph._layer.bezierPath()
+	if BezierPath != None:
+		BezierPath = BezierPath.copy()
+	else:
+		BezierPath = NSBezierPath.bezierPath()
+	for currComponent in glyph._layer.components:
+		BezierPath.appendBezierPath_(currComponent.bezierPath())
+	_drawBotDrawingTool.drawPath(BezierPath)
 
 _drawBotDrawingTool.drawGlyph = drawGlyph
 
-class RFBezierPath(BezierPath):
+class GSBezierPathDraw(BezierPath):
 
 	def addGlyph(self, glyph):
-		self.getNSBezierPath().appendBezierPath_(glyph._layer.bezierPath())
+		BezierPath = glyph._layer.bezierPath()
+		if BezierPath != None:
+			BezierPath = BezierPath.copy()
+		else:
+			BezierPath = NSBezierPath.bezierPath()
+		for currComponent in glyph._layer.components:
+			BezierPath.appendBezierPath_(currComponent.bezierPath())
+		self.getNSBezierPath().appendBezierPath_(BezierPath)
 
-_drawBotDrawingTool._bezierPathClass = RFBezierPath
+_drawBotDrawingTool._bezierPathClass = GSBezierPathDraw
 
 # reload the module to make them everwhere available
 import drawBot
