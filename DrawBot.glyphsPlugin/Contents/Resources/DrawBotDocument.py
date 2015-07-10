@@ -76,7 +76,10 @@ class DrawBotDocument ( NSDocument, GlyphsPluginProtocol ):
 		NSLog( myLog )
 	
 	def dataRepresentationOfType_(self, aType):
-		return NSString.stringWithString_(self.text).dataUsingEncoding_(NSUTF8StringEncoding)
+		if len(self.text) > 0:
+			return NSString.stringWithString_(self.text).dataUsingEncoding_(NSUTF8StringEncoding)
+		else:
+			NSdata.data()
 	
 	def loadDataRepresentation_ofType_(self, data, aType):
 		self.text = NSString.alloc().initWithData_encoding_(data, NSUTF8StringEncoding)
