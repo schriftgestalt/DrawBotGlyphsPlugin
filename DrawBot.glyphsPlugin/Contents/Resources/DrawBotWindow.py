@@ -92,7 +92,6 @@ class GlyphsDrawBotController(NSWindowController):
 		_NSWindow = self.w.getNSWindow()
 		self.setWindow_(_NSWindow)
 		_NSWindow.setDelegate_(self)
-		_NSWindow.setRestorable_(False)
 		_NSWindow.setContentBorderThickness_forEdge_(27, 1)
 		try:
 			# on 10.7+ full screen support
