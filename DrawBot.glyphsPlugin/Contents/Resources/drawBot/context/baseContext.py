@@ -8,6 +8,7 @@ from tools import openType
 
 _FALLBACKFONT = "LucidaGrande"
 
+
 class BezierPath(object):
 
     """
@@ -70,6 +71,9 @@ class BezierPath(object):
 
     closepath = closePath
 
+    def endPath(self):
+        pass
+
     def rect(self, x, y, w, h):
         """
         Add a rectangle at possition `x`, `y` with a size of `w`, `h`
@@ -102,7 +106,7 @@ class BezierPath(object):
                 font = AppKit.NSFont.fontWithName_size_(_FALLBACKFONT, fontSize)
 
             attributes = {
-                AppKit.NSFontAttributeName : font
+                AppKit.NSFontAttributeName: font
             }
             attributedString = AppKit.NSAttributedString.alloc().initWithString_attributes_(txt, attributes)
         w, h = attributedString.size()
@@ -122,7 +126,7 @@ class BezierPath(object):
         box = CoreText.CTFramesetterCreateFrame(setter, (0, 0), path, None)
         ctLines = CoreText.CTFrameGetLines(box)
         origins = CoreText.CTFrameGetLineOrigins(box, (0, len(ctLines)), None)
-        
+
         if origins and box is not None:
             x -= origins[-1][0]
             y -= origins[-1][1]
@@ -242,19 +246,24 @@ class BezierPath(object):
         new._path = self._path.copy()
         return new
 
+
 class Color(object):
 
+    colorSpace = AppKit.NSColorSpace.genericRGBColorSpace
+
     def __init__(self, r=None, g=None, b=None, a=1):
+        self._color = None
         if r is None:
             return
         if isinstance(r, AppKit.NSColor):
-            self._color = r.colorUsingColorSpaceName_("NSCalibratedRGBColorSpace")
-        elif g == None and b == None:
+            self._color = r
+        elif g is None and b is None:
             self._color = AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(r, r, r, a)
-        elif b == None:
+        elif b is None:
             self._color = AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(r, r, r, g)
         else:
             self._color = AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, a)
+        self._color = self._color.colorUsingColorSpace_(self.colorSpace())
 
     def set(self):
         self._color.set()
@@ -284,18 +293,22 @@ class Color(object):
             return self(*color)
         elif isinstance(color, AppKit.NSColor):
             return self(color)
-        raise DrawBotError, "Not a valid color: %s" % color
+        raise DrawBotError("Not a valid color: %s" % color)
 
 
 class CMYKColor(Color):
+
+    colorSpace = AppKit.NSColorSpace.genericCMYKColorSpace()
 
     def __init__(self, c=None, m=None, y=None, k=None, a=1):
         if c is None:
             return
         if isinstance(c, AppKit.NSColor):
-            self._color = c.colorUsingColorSpaceName_("NSDeviceCMYKColorSpace")
+            self._color = c
         else:
             self._color = AppKit.NSColor.colorWithDeviceCyan_magenta_yellow_black_alpha_(c, m, y, k, a)
+        self._color = self._color.colorUsingColorSpace_(self.colorSpace)
+
 
 class Shadow(object):
 
@@ -319,6 +332,7 @@ class Shadow(object):
             new.cmykColor = self.cmykColor.copy()
         return new
 
+
 class Gradient(object):
 
     _colorClass = Color
@@ -327,13 +341,13 @@ class Gradient(object):
         if gradientType is None:
             return
         if gradientType not in ("linear", "radial"):
-            raise DrawBotError, "Gradient type must be either line or circle"
+            raise DrawBotError("Gradient type must be either line or circle")
         if not colors or len(colors) < 2:
-            raise DrawBotError, "Gradient needs at least 2 colors"
+            raise DrawBotError("Gradient needs at least 2 colors")
         if positions is None:
             positions = [i / float(len(colors)-1) for i in range(len(colors))]
         if len(colors) != len(positions):
-            raise DrawBotError, "Gradient needs a correct position for each color"
+            raise DrawBotError("Gradient needs a correct position for each color")
         self.gradientType = gradientType
         self.colors = self._colorClass.getColorsFromList(colors)
         self.cmykColors = None
@@ -356,6 +370,7 @@ class Gradient(object):
         new.startRadius = self.startRadius
         new.endRadius = self.endRadius
         return new
+
 
 class FormattedString(object):
 
@@ -514,7 +529,7 @@ class FormattedString(object):
                     coreTextfeatures.append(feature)
             fontDescriptor = font.fontDescriptor()
             fontAttributes = {
-                CoreText.NSFontFeatureSettingsAttribute : coreTextfeatures,
+                CoreText.NSFontFeatureSettingsAttribute: coreTextfeatures,
                 }
             if fallbackFont:
                 fontAttributes[CoreText.NSFontCascadeListAttribute] = [AppKit.NSFontDescriptor.fontDescriptorWithName_size_(fallbackFont, fontSize)]
@@ -541,7 +556,7 @@ class FormattedString(object):
         if align:
             para.setAlignment_(self._textAlignMap[align])
         if lineHeight:
-            #para.setLineSpacing_(lineHeight)
+            # para.setLineSpacing_(lineHeight)
             para.setMaximumLineHeight_(lineHeight)
             para.setMinimumLineHeight_(lineHeight)
         if tracking:
@@ -619,7 +634,7 @@ class FormattedString(object):
             font = font.encode("ascii", "ignore")
             testFont = AppKit.NSFont.fontWithName_size_(font, self._fontSize)
             if testFont is None:
-                raise DrawBotError, "Fallback font '%s' is not available" % font
+                raise DrawBotError("Fallback font '%s' is not available" % font)
         self._fallbackFont = font
 
     def fontSize(self, fontSize):
@@ -744,7 +759,7 @@ class FormattedString(object):
             ff = self._fallbackFont or _FALLBACKFONT
             warnings.warn("font: %s is not installed, back to the fallback font: %s" % (self._font, ff))
             font = AppKit.NSFont.fontWithName_size_(ff, self._fontSize)
-        return font.descender()        
+        return font.descender()
 
     def fontXHeight(self):
         """
@@ -783,7 +798,7 @@ class FormattedString(object):
         """
         Returns the current line height, based on the current `font` and `fontSize`.
         If a `lineHeight` is set, this value will be returned.
-        """    
+        """
         if self._lineHeight is not None:
             return self._lineHeight
         font = AppKit.NSFont.fontWithName_size_(self._font, self._fontSize)
@@ -811,11 +826,12 @@ class FormattedString(object):
             glyph = font.glyphWithName_(glyphName)
             if glyph:
                 self.append(baseString)
-                glyphInfo = AppKit.NSGlyphInfo.glyphInfoWithGlyph_forFont_baseString_(glyph, font , baseString)
+                glyphInfo = AppKit.NSGlyphInfo.glyphInfoWithGlyph_forFont_baseString_(glyph, font, baseString)
                 self._attributedString.addAttribute_value_range_(AppKit.NSGlyphInfoAttributeName, glyphInfo, (len(self)-1, 1))
             else:
                 warnings.warn("font %s has no glyph with the name %s" % (font.fontName(), glyphName))
         self._fallbackFont = fallbackFont
+
 
 class Text(object):
 
@@ -830,7 +846,7 @@ class Text(object):
 
     def _get_font(self):
         _font = AppKit.NSFont.fontWithName_size_(self._fontName, self.fontSize)
-        if _font == None:
+        if _font is None:
             ff = self._fallbackFontName or _FALLBACKFONT
             warnings.warn("font: %s is not installed, back to the fallback font: %s" % (self._fontName, ff))
             self._fontName = ff
@@ -844,7 +860,7 @@ class Text(object):
                 coreTextfeatures.append(feature)
         fontDescriptor = _font.fontDescriptor()
         fontAttributes = {
-            CoreText.NSFontFeatureSettingsAttribute : coreTextfeatures,
+            CoreText.NSFontFeatureSettingsAttribute: coreTextfeatures,
             }
         if self._fallbackFontName:
             fontAttributes[CoreText.NSFontCascadeListAttribute] = [AppKit.NSFontDescriptor.fontDescriptorWithName_size_(self._fallbackFontName, self.fontSize)]
@@ -869,7 +885,7 @@ class Text(object):
         if fontName:
             dummyFont = AppKit.NSFont.fontWithName_size_(fontName, 10)
             if dummyFont is None:
-                raise DrawBotError, "Fallback font '%s' is not available" % fontName
+                raise DrawBotError("Fallback font '%s' is not available" % fontName)
         self._fallbackFontName = fontName
 
     fallbackFontName = property(_get_fallbackFontName, _set_fallbackFontName)
@@ -917,13 +933,16 @@ class Text(object):
         new.openTypeFeatures = dict(self.openTypeFeatures)
         return new
 
+
 class GraphicsState(object):
 
     _textClass = Text
     _colorClass = Color
 
     def __init__(self):
-        self.fillColor =  self._colorClass(0)
+        self.colorSpace = self._colorClass.colorSpace
+        self.blendMode = None
+        self.fillColor = self._colorClass(0)
         self.strokeColor = None
         self.cmykFillColor = None
         self.cmykStrokeColor = None
@@ -939,6 +958,8 @@ class GraphicsState(object):
 
     def copy(self):
         new = self.__class__()
+        new.colorSpace = self.colorSpace
+        new.blendMode = self.blendMode
         if self.fillColor is not None:
             new.fillColor = self.fillColor.copy()
         else:
@@ -964,6 +985,19 @@ class GraphicsState(object):
         new.lineJoin = self.lineJoin
         new.miterLimit = self.miterLimit
         return new
+
+    def update(self, context):
+        self.updateColorSpace(context)
+
+    # support for color spaces
+
+    def setColorSpace(self, colorSpace):
+        self.colorSpace = colorSpace
+        self.updateColorSpace()
+
+    def updateColorSpace(self, context):
+        self._colorClass.colorSpace = self.colorSpace
+
 
 class BaseContext(object):
 
@@ -997,6 +1031,43 @@ class BaseContext(object):
         justified=AppKit.NSJustifiedTextAlignment,
         )
 
+    _colorSpaceMap = dict(
+        genericRGB=AppKit.NSColorSpace.genericRGBColorSpace,
+        adobeRGB1998=AppKit.NSColorSpace.adobeRGB1998ColorSpace,
+        sRGB=AppKit.NSColorSpace.sRGBColorSpace,
+        )
+
+    _blendModeMap = dict(
+        normal=Quartz.kCGBlendModeNormal,
+        multiply=Quartz.kCGBlendModeMultiply,
+        screen=Quartz.kCGBlendModeScreen,
+        overlay=Quartz.kCGBlendModeOverlay,
+        darken=Quartz.kCGBlendModeDarken,
+        lighten=Quartz.kCGBlendModeLighten,
+        colorDodge=Quartz.kCGBlendModeColorDodge,
+        colorBurn=Quartz.kCGBlendModeColorBurn,
+        softLight=Quartz.kCGBlendModeSoftLight,
+        hardLight=Quartz.kCGBlendModeHardLight,
+        difference=Quartz.kCGBlendModeDifference,
+        exclusion=Quartz.kCGBlendModeExclusion,
+        hue=Quartz.kCGBlendModeHue,
+        saturation=Quartz.kCGBlendModeSaturation,
+        color=Quartz.kCGBlendModeColor,
+        luminosity=Quartz.kCGBlendModeLuminosity,
+        clear=Quartz.kCGBlendModeClear,
+        copy=Quartz.kCGBlendModeCopy,
+        sourceIn=Quartz.kCGBlendModeSourceIn,
+        sourceOut=Quartz.kCGBlendModeSourceOut,
+        sourceAtop=Quartz.kCGBlendModeSourceAtop,
+        destinationOver=Quartz.kCGBlendModeDestinationOver,
+        destinationIn=Quartz.kCGBlendModeDestinationIn,
+        destinationOut=Quartz.kCGBlendModeDestinationOut,
+        destinationAtop=Quartz.kCGBlendModeDestinationAtop,
+        xOR=Quartz.kCGBlendModeXOR,
+        plusDarker=Quartz.kCGBlendModePlusDarker,
+        plusLighter=Quartz.kCGBlendModePlusLighter,
+        )
+
     _softHypen = 0x00AD
 
     def __init__(self):
@@ -1014,6 +1085,9 @@ class BaseContext(object):
         pass
 
     def _restore(self):
+        pass
+
+    def _blendMode(self, operation):
         pass
 
     def _drawPath(self):
@@ -1061,15 +1135,15 @@ class BaseContext(object):
 
     def newPage(self, width=None, height=None):
         if self.width is None and width is None:
-            raise DrawBotError, "A page must have a width"
+            raise DrawBotError("A page must have a width")
         if self.height is None and height is None:
-            raise DrawBotError, "A page must have a height"
+            raise DrawBotError("A page must have a height")
         self.hasPage = True
         self._newPage(width, height)
 
     def saveImage(self, path, multipage):
         if not self.hasPage:
-            raise DrawBotError, "can't save image when no page is set"
+            raise DrawBotError("can't save image when no page is set")
         self._saveImage(path, multipage)
 
     def printImage(self, pdf=None):
@@ -1084,8 +1158,9 @@ class BaseContext(object):
 
     def restore(self):
         if not self._stack:
-            raise DrawBotError, "can't restore graphics state: no matching save()"
+            raise DrawBotError("can't restore graphics state: no matching save()")
         self._state = self._stack.pop()
+        self._state.update(self)
         self._restore()
 
     def rect(self, x, y, w, h):
@@ -1103,7 +1178,7 @@ class BaseContext(object):
 
     def moveTo(self, pt):
         if self._state.path is None:
-            raise DrawBotError, "Create a new path first"
+            raise DrawBotError("Create a new path first")
         self._state.path.moveTo(pt)
 
     def lineTo(self, pt):
@@ -1128,15 +1203,27 @@ class BaseContext(object):
             self._state.path = path
         self._clipPath()
 
+    def colorSpace(self, colorSpace):
+        if colorSpace is None:
+            colorSpace = 'genericRGB'
+        if colorSpace not in self._colorSpaceMap:
+            raise DrawBotError("'%s' is not a valid colorSpace, argument must be '%s'" % (colorSpace, "', '".join(self._colorSpaceMap.keys())))
+        colorSpace = self._colorSpaceMap[colorSpace]
+        self._state.setColorSpace(colorSpace)
+
+    def blendMode(self, operation):
+        self._state.blendMode = operation
+        self._blendMode(operation)
+
     def fill(self, r, g=None, b=None, a=1):
-        if r is  None:
+        self._state.cmykFillColor = None
+        if r is None:
             self._state.fillColor = None
-            self._state.cmykFillColor = None
             return
         self._state.fillColor = self._colorClass(r, g, b, a)
         self._state.gradient = None
 
-    def cmykFill(self, c , m, y, k, a=1):
+    def cmykFill(self, c, m, y, k, a=1):
         if c is None:
             self.fill(None)
         else:
@@ -1145,13 +1232,13 @@ class BaseContext(object):
             self.fill(r, g, b, a)
 
     def stroke(self, r, g=None, b=None, a=1):
+        self._state.cmykStrokeColor = None
         if r is None:
             self._state.strokeColor = None
-            self._state.cmykStrokeColor = None
             return
         self._state.strokeColor = self._colorClass(r, g, b, a)
 
-    def cmykStroke(self, c , m, y, k, a=1):
+    def cmykStroke(self, c, m, y, k, a=1):
         if c is None:
             self.stroke(None)
         else:
@@ -1219,14 +1306,14 @@ class BaseContext(object):
         if join is None:
             self._state.lineJoin = None
         if join not in self._lineJoinStylesMap:
-            raise DrawBotError, "lineJoin() argument must be 'bevel', 'miter' or 'round'"
+            raise DrawBotError("lineJoin() argument must be 'bevel', 'miter' or 'round'")
         self._state.lineJoin = self._lineJoinStylesMap[join]
 
     def lineCap(self, cap):
         if cap is None:
             self._state.lineCap = None
         if cap not in self._lineCapStylesMap:
-            raise DrawBotError, "lineCap() argument must be 'butt', 'square' or 'round'"
+            raise DrawBotError("lineCap() argument must be 'butt', 'square' or 'round'")
         self._state.lineCap = self._lineCapStylesMap[cap]
 
     def lineDash(self, dash):
@@ -1240,7 +1327,7 @@ class BaseContext(object):
 
     def font(self, fontName, fontSize):
         self._state.text.fontName = fontName
-        if fontSize != None:
+        if fontSize is not None:
             self.fontSize(fontSize)
 
     def fallbackFont(self, fontName):
@@ -1267,14 +1354,14 @@ class BaseContext(object):
     def attributedString(self, txt, align=None):
         if isinstance(txt, FormattedString):
             return txt.getNSObject()
-        attributes = {AppKit.NSFontAttributeName : self._state.text.font}
+        attributes = {AppKit.NSFontAttributeName: self._state.text.font}
         if self._state.fillColor is not None:
             if self._state.cmykFillColor:
                 c = self._state.cmykFillColor
             else:
                 c = self._state.fillColor
             extra = {
-                AppKit.NSForegroundColorAttributeName : c.getNSObject(),
+                AppKit.NSForegroundColorAttributeName: c.getNSObject(),
                 }
             attributes.update(extra)
         if self._state.strokeColor is not None:
@@ -1282,10 +1369,10 @@ class BaseContext(object):
                 c = self._state.cmykStrokeColor
             else:
                 c = self._state.strokeColor
-            #strokeWidth = -abs(self._state.strokeWidth)
+            # strokeWidth = -abs(self._state.strokeWidth)
             extra = {
-                    #AppKit.NSStrokeWidthAttributeName : strokeWidth,
-                    AppKit.NSStrokeColorAttributeName : c.getNSObject(),
+                    # AppKit.NSStrokeWidthAttributeName: strokeWidth,
+                    AppKit.NSStrokeColorAttributeName: c.getNSObject(),
                     }
 
             attributes.update(extra)
@@ -1293,7 +1380,7 @@ class BaseContext(object):
         if align:
             para.setAlignment_(self._textAlignMap[align])
         if self._state.text.lineHeight:
-            #para.setLineSpacing_(self._state.text.lineHeight)
+            # para.setLineSpacing_(self._state.text.lineHeight)
             para.setMaximumLineHeight_(self._state.text.lineHeight)
             para.setMinimumLineHeight_(self._state.text.lineHeight)
         attributes[AppKit.NSParagraphStyleAttributeName] = para

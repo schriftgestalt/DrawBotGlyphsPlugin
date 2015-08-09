@@ -4,18 +4,27 @@ import os
 
 import vanilla
 
-# errors
-class DrawBotError(TypeError): pass
 
-# default tools
+# ==========
+# = errors =
+# ==========
+
+class DrawBotError(TypeError):
+    pass
+
+
+# =================
+# = default tools =
+# =================
 
 def getDefault(key, defaultValue=None):
     """
-    Get a value from the user default for a key. 
+    Get a value from the user default for a key.
     """
     defaultsFromFile = AppKit.NSUserDefaults.standardUserDefaults()
     return defaultsFromFile.get(key, defaultValue)
-    
+
+
 def setDefault(key, value):
     """
     Set a value to the user defaults for a given key.
@@ -23,29 +32,38 @@ def setDefault(key, value):
     defaultsFromFile = AppKit.NSUserDefaults.standardUserDefaults()
     defaultsFromFile.setObject_forKey_(value, key)
 
+
 def _getNSDefault(key, defaultValue=None):
     data = getDefault(key, defaultValue)
     if isinstance(data, AppKit.NSData):
         return AppKit.NSUnarchiver.unarchiveObjectWithData_(data)
     return data
 
+
 def _setNSDefault(key, value):
     data = AppKit.NSArchiver.archivedDataWithRootObject_(value)
     setDefault(key, data)
 
+
 def getFontDefault(key, defaultValue=None):
     return _getNSDefault(key, defaultValue)
+
 
 def setFontDefault(key, font):
     _setNSDefault(key, font)
 
+
 def getColorDefault(key, defaultValue=None):
     return _getNSDefault(key, defaultValue)
+
 
 def setColorDefault(key, color):
     _setNSDefault(key, color)
 
-# path tools
+
+# ==============
+# = path tools =
+# ==============
 
 def optimizePath(path):
     if path.startswith("http"):
@@ -55,7 +73,10 @@ def optimizePath(path):
         path = os.path.abspath(path)
     return path
 
-# color tools
+
+# ===============
+# = color tools =
+# ===============
 
 def cmyk2rgb(c, m, y, k):
     """
@@ -66,6 +87,7 @@ def cmyk2rgb(c, m, y, k):
     b = 1.0 - min(1.0, y + k)
     return r, g, b
 
+
 def rgb2cmyk(r, g, b):
     """
     Convert rgb color to cmyk color.
@@ -73,16 +95,18 @@ def rgb2cmyk(r, g, b):
     c = 1 - r
     m = 1 - g
     y = 1 - b
-    k = min(c,m,y)
-    c = min(1, max(0,c-k))
-    m = min(1, max(0,m-k))
-    y = min(1, max(0,y-k))
-    k = min(1, max(0,k))
+    k = min(c, m, y)
+    c = min(1, max(0, c-k))
+    m = min(1, max(0, m-k))
+    y = min(1, max(0, y-k))
+    k = min(1, max(0, k))
     return c, m, y, k
+
 
 def stringToInt(code):
     import struct
     return struct.unpack('>l', code)[0]
+
 
 class Warnings(object):
 
@@ -105,7 +129,7 @@ warnings = Warnings()
 
 
 class VariableController(object):
-    
+
     def __init__(self, attributes, callback, document=None):
         self._callback = callback
         self._attributes = None
@@ -130,22 +154,36 @@ class VariableController(object):
             uiElement = attribute["ui"]
             name = attribute["name"]
             args = dict(attribute.get("args", {}))
+            height = 19
+            # create a label for every ui element except a checkbox
             if uiElement != "CheckBox":
-                label = vanilla.TextBox((0, y+2, labelSize-gutter, 19), "%s:" % name, alignment="right", sizeStyle="small")
+                # create the label view
+                label = vanilla.TextBox((0, y+2, labelSize-gutter, height), "%s:" % name, alignment="right", sizeStyle="small")
+                # set the label view
                 setattr(ui, "%sLabel" % name, label)
             else:
                 args["title"] = name
-            if uiElement not in ("ColorWell"):
-                args["sizeStyle"] = "small"
-            else:
+            # check the provided args and add required keys
+            if uiElement == "ColorWell":
+                # a color well needs a color to be set
+                # no size style
                 if "color" not in args:
                     args["color"] = AppKit.NSColor.blackColor()
-            attr = getattr(vanilla, uiElement)((labelSize, y, -10, 19), callback=self.changed, **args)
+            elif uiElement == "TextEditor":
+                # different control height
+                # no size style
+                height = attribute.get("height", 75)
+            else:
+                # all other get a size style
+                args["sizeStyle"] = "small"
+            # create the control view
+            attr = getattr(vanilla, uiElement)((labelSize, y, -10, height), callback=self.changed, **args)
+            # set the control view
             setattr(ui, name, attr)
-            y += 25
-        
+            y += height + 6
+        # resize the window according the provided ui elements
         self.w.resize(250, y)
-    
+
     def changed(self, sender):
         if self._callback:
             self._callback()
@@ -153,9 +191,9 @@ class VariableController(object):
     def get(self):
         data = {}
         for attribute in self._attributes:
-            name = attribute["name"] 
+            name = attribute["name"]
             data[name] = getattr(self.w.ui, name).get()
         return data
-    
+
     def show(self):
         self.w.show()

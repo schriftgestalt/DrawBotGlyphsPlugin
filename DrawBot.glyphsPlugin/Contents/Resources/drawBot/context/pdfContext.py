@@ -5,12 +5,14 @@ import Quartz
 from baseContext import BaseContext, FormattedString
 from drawBot.misc import DrawBotError
 
+
 def sendPDFtoPrinter(pdfDocument):
     printInfo = AppKit.NSPrintInfo.sharedPrintInfo()
     op = pdfDocument.getPrintOperationForPrintInfo_autoRotate_(printInfo, True)
     printPanel = op.printPanel()
     printPanel.setOptions_(AppKit.NSPrintPanelShowsCopies | AppKit.NSPrintPanelShowsPageRange | AppKit.NSPrintPanelShowsPaperSize | AppKit.NSPrintPanelShowsOrientation | AppKit.NSPrintPanelShowsScaling | AppKit.NSPrintPanelShowsPrintSelection | AppKit.NSPrintPanelShowsPreview)
     op.runOperation()
+
 
 class PDFContext(BaseContext):
 
@@ -74,6 +76,10 @@ class PDFContext(BaseContext):
 
     def _restore(self):
         Quartz.CGContextRestoreGState(self._pdfContext)
+
+    def _blendMode(self, operation):
+        value = self._blendModeMap[operation]
+        Quartz.CGContextSetBlendMode(self._pdfContext, value)
 
     def _drawPath(self):
         if self._state.path:
@@ -192,24 +198,24 @@ class PDFContext(BaseContext):
                 self._restore()
 
     def _getImageSource(self, key):
+        path = key
+        image = None
         if isinstance(key, AppKit.NSImage):
-            k = id(key)
-            if k not in self._cachedImages:
-                data = key.TIFFRepresentation()
-                source = Quartz.CGImageSourceCreateWithData(data, {})
-                self._cachedImages[k] = Quartz.CGImageSourceCreateImageAtIndex(source, 0, None)
-            return self._cachedImages[k]
-        elif key not in self._cachedImages:
-            path = key
-            if path.startswith("http"):
-                url = AppKit.NSURL.URLWithString_(path)
-            else:
-                url = AppKit.NSURL.fileURLWithPath_(path)
-            source = Quartz.CGImageSourceCreateWithURL(url, None)
+            image = key
+            key = id(key)
+        if key not in self._cachedImages:
+            if image is None:
+                if path.startswith("http"):
+                    url = AppKit.NSURL.URLWithString_(path)
+                else:
+                    url = AppKit.NSURL.fileURLWithPath_(path)
+                image = AppKit.NSImage.alloc().initByReferencingURL_(url)
+            data = image.TIFFRepresentation()
+            source = Quartz.CGImageSourceCreateWithData(data, {})
             if source is not None:
                 self._cachedImages[key] = Quartz.CGImageSourceCreateImageAtIndex(source, 0, None)
             else:
-                raise DrawBotError, "No image found at %s" % key
+                raise DrawBotError("No image found at %s" % key)
         return self._cachedImages[key]
 
     def _image(self, path, (x, y), alpha):
@@ -296,9 +302,9 @@ class PDFContext(BaseContext):
             gradient.positions)
 
         if gradient.gradientType == "linear":
-            Quartz.CGContextDrawLinearGradient(self._pdfContext, cgGradient, gradient.start, gradient.end, Quartz.kCGGradientDrawsBeforeStartLocation|Quartz.kCGGradientDrawsAfterEndLocation)
+            Quartz.CGContextDrawLinearGradient(self._pdfContext, cgGradient, gradient.start, gradient.end, Quartz.kCGGradientDrawsBeforeStartLocation | Quartz.kCGGradientDrawsAfterEndLocation)
         elif gradient.gradientType == "radial":
-            Quartz.CGContextDrawRadialGradient(self._pdfContext, cgGradient, gradient.start, gradient.startRadius, gradient.end, gradient.endRadius, Quartz.kCGGradientDrawsBeforeStartLocation|Quartz.kCGGradientDrawsAfterEndLocation)
+            Quartz.CGContextDrawRadialGradient(self._pdfContext, cgGradient, gradient.start, gradient.startRadius, gradient.end, gradient.endRadius, Quartz.kCGGradientDrawsBeforeStartLocation | Quartz.kCGGradientDrawsAfterEndLocation)
 
     def _nsColorToCGColor(self, c):
         if c.numberOfComponents() == 5:
@@ -311,6 +317,3 @@ class PDFContext(BaseContext):
 
     def _rgbNSColorToCGColor(self, c):
         return Quartz.CGColorCreateGenericRGB(c.redComponent(), c.greenComponent(), c.blueComponent(), c.alphaComponent())
-
-
-
