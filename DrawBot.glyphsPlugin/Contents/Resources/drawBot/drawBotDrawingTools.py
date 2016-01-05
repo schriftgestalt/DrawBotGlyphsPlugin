@@ -12,8 +12,6 @@ from context.baseContext import BezierPath, FormattedString
 from context.dummyContext import DummyContext
 from context.tools import openType
 
-print "__context", context
-
 from misc import DrawBotError, warnings, VariableController, optimizePath
 
 def _getmodulecontents(module, names=None):
@@ -91,7 +89,6 @@ class DrawBotDrawingTool(object):
         self._instructionsStack.append((callback, args, kwargs))
 
     def _drawInContext(self, context):
-        print "__context", context
         if not self._instructionsStack:
             return
         if self._instructionsStack[0][0] != "newPage":
