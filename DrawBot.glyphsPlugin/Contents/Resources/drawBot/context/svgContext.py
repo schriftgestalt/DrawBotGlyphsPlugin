@@ -11,8 +11,9 @@ from fontTools.misc.transform import Transform
 
 from baseContext import BaseContext, GraphicsState, Shadow, Color, FormattedString, Gradient
 
-from drawBot.misc import warnings
+from drawBot.misc import warnings, formatNumber
 
+from objc import super
 
 # simple file object
 
@@ -48,7 +49,15 @@ class SVGColor(Color):
     def svgColor(self):
         c = self.getNSObject()
         if c:
-            return "rgba(%s,%s,%s,%s)" % (int(255*c.redComponent()), int(255*c.greenComponent()), int(255*c.blueComponent()), c.alphaComponent())
+            if c.numberOfComponents() == 2:
+                # gray number
+                r = g = b = int(255*c.whiteComponent())
+            else:
+                r = int(255*c.redComponent())
+                g = int(255*c.greenComponent())
+                b = int(255*c.blueComponent())
+            a = c.alphaComponent()
+            return "rgba(%s,%s,%s,%s)" % (r, g, b, a)
         return "none"
 
 
@@ -367,6 +376,7 @@ class SVGContext(BaseContext):
                 fillColor = attributes.get(AppKit.NSForegroundColorAttributeName)
                 strokeColor = attributes.get(AppKit.NSStrokeColorAttributeName)
                 strokeWidth = attributes.get(AppKit.NSStrokeWidthAttributeName, self._state.strokeWidth)
+                baselineShift = attributes.get(AppKit.NSBaselineOffsetAttributeName, 0)
 
                 fontName = font.fontName()
                 fontSize = font.pointSize()
@@ -397,7 +407,7 @@ class SVGContext(BaseContext):
                     runY = runPos[0].y
 
                 spanData["x"] = originX + runX + x
-                spanData["y"] = self.height - y - originY - runY
+                spanData["y"] = self.height - y - originY - runY + baselineShift
                 self._svgContext.begintag("tspan", **spanData)
                 self._svgContext.newline()
                 self._svgContext.write(runTxt)
@@ -410,7 +420,7 @@ class SVGContext(BaseContext):
         self._svgContext.newline()
         self._svgEndClipPath()
 
-    def _image(self, path, (x, y), alpha):
+    def _image(self, path, (x, y), alpha, pageNumber):
         self._svgBeginClipPath()
         if path.startswith("http"):
             url = AppKit.NSURL.URLWithString_(path)
@@ -451,21 +461,27 @@ class SVGContext(BaseContext):
             aT.setTransformStruct_(transformMatrix[:])
             path.transformUsingAffineTransform_(aT)
         svg = ""
-        lastPoint = None
         for i in range(path.elementCount()):
             instruction, points = path.elementAtIndex_associatedPoints_(i)
             if instruction == AppKit.NSMoveToBezierPathElement:
-                svg += "M%.4g,%.4g" % (points[0].x, points[0].y)
-                lastPoint = points[0]
+                svg += "M%s,%s " % (formatNumber(points[0].x), formatNumber(points[0].y))
+                previousPoint = points[-1]
             elif instruction == AppKit.NSLineToBezierPathElement:
-                svg += "l%.4g,%.4g" % (points[0].x - lastPoint.x, points[0].y - lastPoint.y)
-                lastPoint = points[0]
+                x = points[0].x - previousPoint.x
+                y = points[0].y - previousPoint.y
+                svg += "l%s,%s " % (formatNumber(x), formatNumber(y))
+                previousPoint = points[-1]
             elif instruction == AppKit.NSCurveToBezierPathElement:
-                svg += "c%.4g,%.4g,%.4g,%.4g,%.4g,%.4g" % (points[0].x - lastPoint.x, points[0].y - lastPoint.y, points[1].x - lastPoint.x, points[1].y - lastPoint.y, points[2].x - lastPoint.x, points[2].y - lastPoint.y)
-                lastPoint = points[2]
+                offx1 = points[0].x - previousPoint.x
+                offy1 = points[0].y - previousPoint.y
+                offx2 = points[1].x - previousPoint.x
+                offy2 = points[1].y - previousPoint.y
+                x = points[2].x - previousPoint.x
+                y = points[2].y - previousPoint.y
+                svg += "c%s,%s,%s,%s,%s,%s " % (formatNumber(offx1), formatNumber(offy1), formatNumber(offx2), formatNumber(offy2), formatNumber(x), formatNumber(y))
+                previousPoint = points[-1]
             elif instruction == AppKit.NSClosePathBezierPathElement:
-                svg += "Z"
-        svg = svg.replace(",-", "-")
+                svg += "Z "
         return svg
 
     def _svgBeginClipPath(self):

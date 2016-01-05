@@ -1,6 +1,6 @@
 from AppKit import *
 import math
-
+from objc import super
 
 """
 Based/translated from NoodleLineNumberView

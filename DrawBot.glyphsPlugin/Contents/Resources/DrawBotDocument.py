@@ -2,36 +2,39 @@
 # encoding: utf-8
 
 import objc
+# from Foundation import NSBundle, NSApplication, NSMenuItem
+# from AppKit import NSDocument, NSDocumentController
 from Foundation import *
 from AppKit import *
 import sys, os, re
+from objc import super
 
 from DrawBotWindow import GlyphsDrawBotController
 
 MainBundle = NSBundle.mainBundle()
 path = MainBundle.bundlePath() + "/Contents/Scripts"
 if not path in sys.path:
-	sys.path.append( path )
+	sys.path.append(path)
 
 import GlyphsApp
 
-GlyphsPluginProtocol = objc.protocolNamed( "GlyphsPlugin" )
+GlyphsPluginProtocol = objc.protocolNamed("GlyphsPlugin")
 
-class DrawBotDocument ( NSDocument, GlyphsPluginProtocol ):
+class DrawBotDocument (NSDocument, GlyphsPluginProtocol):
 	
-	def init( self ):
+	def init(self):
 		"""
 		You can add an observer like in the example.
 		Do all initializing here.
 		"""
-		self.text = ""
 		self = super(DrawBotDocument, self).init()
+		self.text = ""
 		return self
 	
 	def loadPlugin(self):
 		mainMenu = NSApplication.sharedApplication().mainMenu()
 		s = objc.selector(self.newDocument,signature='v@:')
-		newMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("New Drawbot", s, "" )
+		newMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("New Drawbot", s, "")
 		newMenuItem.setTarget_(self)
 		mainMenu.itemAtIndex_(1).submenu().insertItem_atIndex_(newMenuItem, 1)
 	
@@ -40,8 +43,13 @@ class DrawBotDocument ( NSDocument, GlyphsPluginProtocol ):
 		self.addWindowController_(WindowController)
 		
 	def newDocument(self):
-		newDoc = NSDocumentController.sharedDocumentController().makeUntitledDocumentOfType_error_("public.python-script", None)
-		newDoc = newDoc[0]
+		NSDocumentController.sharedDocumentController().addDocumentOfType_("public.python-script")
+		return
+		# print newDoc
+		# newDoc = newDoc[0]
+		newDoc = DrawBotDocument.alloc().init()
+		print newDoc.__class__.__name__
+		
 		NSDocumentController.sharedDocumentController().addDocument_(newDoc)
 		newDoc.makeWindowControllers()
 		newDoc.showWindows()
@@ -49,10 +57,11 @@ class DrawBotDocument ( NSDocument, GlyphsPluginProtocol ):
 	def windowController(self):
 		return self.windowControllers()[0]
 	
-	def __del__(self):
-		"""
-		Remove all observers you added in init().
-		"""
+	# def __del__(self):
+	# 	"""
+	# 	Remove all observers you added in init().
+	# 	"""
+	# 	pass
 	
 	def title(self):
 		return "DrawBot"
@@ -65,15 +74,15 @@ class DrawBotDocument ( NSDocument, GlyphsPluginProtocol ):
 		try:
 			return 1
 		except Exception as e:
-			self.logToConsole( "interfaceVersion: %s" % str(e) )
+			self.logToConsole("interfaceVersion: %s" % str(e))
 	
 	def logToConsole(self, message):
 		"""
 		The variable 'message' will be passed to Console.app.
-		Use self.logToConsole( "bla bla" ) for debugging.
+		Use self.logToConsole("bla bla") for debugging.
 		"""
-		myLog = "%s:\n%s" % ( self.__class__.__name__, message )
-		NSLog( myLog )
+		myLog = "%s:\n%s" % (self.__class__.__name__, message)
+		NSLog(myLog)
 	
 	def dataRepresentationOfType_(self, aType):
 		if len(self.text) > 0:

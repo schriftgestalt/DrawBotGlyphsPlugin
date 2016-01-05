@@ -5,6 +5,7 @@ import sys
 import traceback
 import site
 import tempfile
+from objc import super
 
 from drawBot.misc import getDefault
 

@@ -7,6 +7,7 @@ import os
 from drawBot.misc import DrawBotError
 from pdfContext import PDFContext
 
+from objc import super
 
 class MOVContext(PDFContext):
 

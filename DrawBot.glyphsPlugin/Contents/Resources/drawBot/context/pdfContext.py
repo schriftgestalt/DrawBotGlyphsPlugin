@@ -5,6 +5,7 @@ import Quartz
 from baseContext import BaseContext, FormattedString
 from drawBot.misc import DrawBotError
 
+from objc import super
 
 def sendPDFtoPrinter(pdfDocument):
     printInfo = AppKit.NSPrintInfo.sharedPrintInfo()
@@ -149,7 +150,7 @@ class PDFContext(BaseContext):
                 fillColor = attributes.get(AppKit.NSForegroundColorAttributeName)
                 strokeColor = attributes.get(AppKit.NSStrokeColorAttributeName)
                 strokeWidth = attributes.get(AppKit.NSStrokeWidthAttributeName, self._state.strokeWidth)
-
+                baselineShift = attributes.get(AppKit.NSBaselineOffsetAttributeName, 0)
                 self._save()
                 drawingMode = None
                 if self._state.shadow is not None:
@@ -162,13 +163,13 @@ class PDFContext(BaseContext):
                         self._state.fillColor = None
                         self._state.cmykColor = None
                         Quartz.CGContextSetTextDrawingMode(self._pdfContext, Quartz.kCGTextFill)
-                        Quartz.CGContextSetTextPosition(self._pdfContext, x+originX, y+originY)
+                        Quartz.CGContextSetTextPosition(self._pdfContext, x+originX, y+originY+baselineShift)
                         CoreText.CTRunDraw(ctRun, self._pdfContext, (0, 0))
                         self._restore()
                 if canDoGradients and self._state.gradient is not None:
                     self._save()
                     Quartz.CGContextSetTextDrawingMode(self._pdfContext, Quartz.kCGTextClip)
-                    Quartz.CGContextSetTextPosition(self._pdfContext, x+originX, y+originY)
+                    Quartz.CGContextSetTextPosition(self._pdfContext, x+originX, y+originY+baselineShift)
                     CoreText.CTRunDraw(ctRun, self._pdfContext, (0, 0))
                     self._pdfGradient(self._state.gradient)
                     self._restore()
@@ -193,13 +194,14 @@ class PDFContext(BaseContext):
 
                 if drawingMode is not None:
                     Quartz.CGContextSetTextDrawingMode(self._pdfContext, drawingMode)
-                    Quartz.CGContextSetTextPosition(self._pdfContext, x+originX, y+originY)
+                    Quartz.CGContextSetTextPosition(self._pdfContext, x+originX, y+originY+baselineShift)
                     CoreText.CTRunDraw(ctRun, self._pdfContext, (0, 0))
                 self._restore()
 
-    def _getImageSource(self, key):
+    def _getImageSource(self, key, pageNumber):
         path = key
         image = None
+        isPDF = False
         if isinstance(key, AppKit.NSImage):
             image = key
             key = id(key)
@@ -209,23 +211,37 @@ class PDFContext(BaseContext):
                     url = AppKit.NSURL.URLWithString_(path)
                 else:
                     url = AppKit.NSURL.fileURLWithPath_(path)
-                image = AppKit.NSImage.alloc().initByReferencingURL_(url)
-            data = image.TIFFRepresentation()
-            source = Quartz.CGImageSourceCreateWithData(data, {})
-            if source is not None:
-                self._cachedImages[key] = Quartz.CGImageSourceCreateImageAtIndex(source, 0, None)
-            else:
-                raise DrawBotError("No image found at %s" % key)
+                isPDF = AppKit.PDFDocument.alloc().initWithURL_(url) is not None
+                if isPDF:
+                    pdf = Quartz.CGPDFDocumentCreateWithURL(url)
+                    if pdf is not None:
+                        if pageNumber is None:
+                            pageNumber = Quartz.CGPDFDocumentGetNumberOfPages(pdf)
+                        self._cachedImages[key] = isPDF, Quartz.CGPDFDocumentGetPage(pdf, pageNumber)
+                    else:
+                        raise DrawBotError("No pdf found at %s" % key)
+                else:
+                    image = AppKit.NSImage.alloc().initByReferencingURL_(url)
+            if image and not isPDF:
+                data = image.TIFFRepresentation()
+                source = Quartz.CGImageSourceCreateWithData(data, {})
+                if source is not None:
+                    self._cachedImages[key] = isPDF, Quartz.CGImageSourceCreateImageAtIndex(source, 0, None)
+                else:
+                    raise DrawBotError("No image found at %s" % key)
         return self._cachedImages[key]
 
-    def _image(self, path, (x, y), alpha):
+    def _image(self, path, (x, y), alpha, pageNumber):
         self._save()
-        image = self._getImageSource(path)
+        isPDF, image = self._getImageSource(path, pageNumber)
         if image is not None:
-            w = Quartz.CGImageGetWidth(image)
-            h = Quartz.CGImageGetHeight(image)
             Quartz.CGContextSetAlpha(self._pdfContext, alpha)
-            Quartz.CGContextDrawImage(self._pdfContext, Quartz.CGRectMake(x, y, w, h), image)
+            if isPDF:
+                Quartz.CGContextDrawPDFPage(self._pdfContext, image)
+            else:
+                w = Quartz.CGImageGetWidth(image)
+                h = Quartz.CGImageGetHeight(image)
+                Quartz.CGContextDrawImage(self._pdfContext, Quartz.CGRectMake(x, y, w, h), image)
         self._restore()
 
     def _transform(self, transform):
@@ -289,7 +305,7 @@ class PDFContext(BaseContext):
                 cgColor = self._cmykNSColorToCGColor(c)
                 colors.append(cgColor)
         else:
-            colorSpace = Quartz.CGColorSpaceCreateDeviceRGB()
+            colorSpace = self._colorClass.colorSpace().CGColorSpace()
             colors = []
             for color in gradient.colors:
                 c = color.getNSObject()
@@ -316,4 +332,7 @@ class PDFContext(BaseContext):
         return Quartz.CGColorCreateGenericCMYK(c.cyanComponent(), c.magentaComponent(), c.yellowComponent(), c.blackComponent(), c.alphaComponent())
 
     def _rgbNSColorToCGColor(self, c):
+        if c.numberOfComponents() == 2:
+            # gray color
+            return Quartz.CGColorCreateGenericGray(c.whiteComponent(), c.alphaComponent())
         return Quartz.CGColorCreateGenericRGB(c.redComponent(), c.greenComponent(), c.blueComponent(), c.alphaComponent())

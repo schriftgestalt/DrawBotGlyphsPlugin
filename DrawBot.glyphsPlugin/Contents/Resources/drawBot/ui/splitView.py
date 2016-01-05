@@ -2,7 +2,7 @@ from AppKit import *
 
 from vanilla import *
 from vanilla.vanillaBase import VanillaBaseObject
-
+from objc import super
 
 class SimpleNSSplitView(NSSplitView):
 

@@ -16,7 +16,7 @@ from drawBot.context.baseContext import BezierPath
 sys.path.append(os.path.dirname(__file__))
 
 def drawGlyph(glyph):
-	BezierPath = glyph._layer.bezierPath()
+	BezierPath = glyph._layer.bezierPath
 	if BezierPath != None:
 		BezierPath = BezierPath.copy()
 	else:
@@ -68,10 +68,7 @@ from drawBot.ui.codeEditor import CodeEditor, OutPutEditor, CodeNSTextView
 from drawBot.scriptTools import ScriptRunner, CallbackRunner, DrawBotNamespace, StdOutput
 from drawBot.scriptTools import _Helper # for ScriptRunner
 
-		
-
-
-
+from objc import super
 
 class GlyphsDrawBotController(NSWindowController):
 
