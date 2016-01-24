@@ -43,12 +43,12 @@ class DrawBotDocument (NSDocument, GlyphsPluginProtocol):
 		self.addWindowController_(WindowController)
 		
 	def newDocument(self):
-		NSDocumentController.sharedDocumentController().addDocumentOfType_("public.python-script")
-		return
+		#NSDocumentController.sharedDocumentController().addDocumentOfType_("public.python-script")
+		#return
 		# print newDoc
 		# newDoc = newDoc[0]
 		newDoc = DrawBotDocument.alloc().init()
-		print newDoc.__class__.__name__
+		#print newDoc.__class__.__name__
 		
 		NSDocumentController.sharedDocumentController().addDocument_(newDoc)
 		newDoc.makeWindowControllers()

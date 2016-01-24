@@ -21,11 +21,11 @@ def drawGlyph(glyph):
 		BezierPath = BezierPath.copy()
 	else:
 		BezierPath = NSBezierPath.bezierPath()
-	OpenBezierPath = glyph._layer.openBezierPath()
+	OpenBezierPath = glyph._layer.openBezierPath
 	if OpenBezierPath:
 		BezierPath.appendBezierPath_(OpenBezierPath)
 	for currComponent in glyph._layer.components:
-		BezierPath.appendBezierPath_(currComponent.bezierPath())
+		BezierPath.appendBezierPath_(currComponent.bezierPath)
 	_drawBotDrawingTool.drawPath(BezierPath)
 
 _drawBotDrawingTool.drawGlyph = drawGlyph
