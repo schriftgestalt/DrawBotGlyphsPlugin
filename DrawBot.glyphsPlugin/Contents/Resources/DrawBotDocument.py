@@ -2,8 +2,6 @@
 # encoding: utf-8
 
 import objc
-# from Foundation import NSBundle, NSApplication, NSMenuItem
-# from AppKit import NSDocument, NSDocumentController
 from Foundation import *
 from AppKit import *
 import sys, os, re
@@ -43,12 +41,7 @@ class DrawBotDocument (NSDocument, GlyphsPluginProtocol):
 		self.addWindowController_(WindowController)
 		
 	def newDocument(self):
-		#NSDocumentController.sharedDocumentController().addDocumentOfType_("public.python-script")
-		#return
-		# print newDoc
-		# newDoc = newDoc[0]
 		newDoc = DrawBotDocument.alloc().init()
-		#print newDoc.__class__.__name__
 		
 		NSDocumentController.sharedDocumentController().addDocument_(newDoc)
 		newDoc.makeWindowControllers()
