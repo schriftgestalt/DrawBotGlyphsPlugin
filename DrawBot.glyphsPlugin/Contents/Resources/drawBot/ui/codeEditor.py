@@ -3,7 +3,7 @@ import objc
 
 from keyword import kwlist
 from objc import super
-import re
+import re, traceback, sys
 
 from pygments.lexers import PythonLexer, get_lexer_by_name
 from pygments.token import *
@@ -409,24 +409,27 @@ class CodeNSTextView(AppKit.NSTextView):
     def setBackgroundColor_(self, color):
         # invert the insertioin pointer color
         # and the fallback text color and background color
-        color = color.colorUsingColorSpaceName_(AppKit.NSCalibratedRGBColorSpace)
-        r = color.redComponent()
-        g = color.greenComponent()
-        b = color.blueComponent()
-        s = sum([r, g, b]) / 3.
-        inverseColor = s < .6
-        if inverseColor:
-            self._fallbackBackgroundColor = AppKit.NSColor.blackColor()
-            self._fallbackTextColor = AppKit.NSColor.whiteColor()
-            self.setInsertionPointColor_(AppKit.NSColor.whiteColor())
-        else:
-            self._fallbackBackgroundColor = AppKit.NSColor.whiteColor()
-            self._fallbackTextColor = AppKit.NSColor.blackColor()
-            self.setInsertionPointColor_(AppKit.NSColor.blackColor())
+        try:
+            color = color.colorUsingColorSpaceName_(AppKit.NSCalibratedRGBColorSpace)
+            r = color.redComponent()
+            g = color.greenComponent()
+            b = color.blueComponent()
+            s = sum([r, g, b]) / 3.
+            inverseColor = s < .6
+            if inverseColor:
+                self._fallbackBackgroundColor = AppKit.NSColor.blackColor()
+                self._fallbackTextColor = AppKit.NSColor.whiteColor()
+                self.setInsertionPointColor_(AppKit.NSColor.whiteColor())
+            else:
+                self._fallbackBackgroundColor = AppKit.NSColor.whiteColor()
+                self._fallbackTextColor = AppKit.NSColor.blackColor()
+                self.setInsertionPointColor_(AppKit.NSColor.blackColor())
 
-        if self.enclosingScrollView():
-            self.enclosingScrollView().setBackgroundColor_(color)
-        self._updateRulersColors()
+            if self.enclosingScrollView():
+                self.enclosingScrollView().setBackgroundColor_(color)
+            self._updateRulersColors()
+        except:
+            print(traceback.format_exc())
         super(CodeNSTextView, self).setBackgroundColor_(color)
 
     def changeColor_(self, color):

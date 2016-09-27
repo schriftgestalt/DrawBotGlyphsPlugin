@@ -1,6 +1,6 @@
 from AppKit import *
 from Quartz import PDFView, PDFThumbnailView, PDFDocument
-
+import traceback
 from vanilla import Group
 
 epsPasteBoardType = "CorePasteboardFlavorType 0x41494342"
@@ -39,11 +39,14 @@ class DrawView(Group):
 
     def __init__(self, posSize):
         super(DrawView, self).__init__(posSize)
-        pdfView = self.getNSView()
-        pdfView.setAutoScales_(True)
-        view = pdfView.documentView()
-        scrollview = view.enclosingScrollView()
-        scrollview.setBorderType_(NSBezelBorder)
+        try:
+            pdfView = self.getNSView()
+            pdfView.setAutoScales_(True)
+            view = pdfView.documentView()
+            # scrollview = view.enclosingScrollView()
+            # scrollview.setBorderType_(NSBezelBorder)
+        except:
+            print(traceback.format_exc())
 
     def get(self):
         pdf = self.getNSView().document()

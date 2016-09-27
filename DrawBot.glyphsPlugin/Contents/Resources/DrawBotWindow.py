@@ -111,8 +111,8 @@ class GlyphsDrawBotController(NSWindowController):
 		self.drawView = DrawView((0, 0, -0, -0))
 		pdfView = self.drawView.getNSView()
 		view = pdfView.documentView()
-		scrollview = view.enclosingScrollView()
-		scrollview.setBorderType_(0)
+		# scrollview = view.enclosingScrollView()
+		# scrollview.setBorderType_(0)
 		# the view with all thumbnails
 		self.thumbnails = ThumbnailView((0, 0, -0, -0))
 		# connect the thumbnail view with the draw view
