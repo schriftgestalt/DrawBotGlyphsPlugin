@@ -2,8 +2,12 @@ import AppKit
 import CoreText
 import Quartz
 
+import math
+
+from tools import gifTools
+
 from baseContext import BaseContext, FormattedString
-from drawBot.misc import DrawBotError
+from drawBot.misc import DrawBotError, isPDF, isGIF
 
 from objc import super
 
@@ -201,43 +205,59 @@ class PDFContext(BaseContext):
     def _getImageSource(self, key, pageNumber):
         path = key
         image = None
-        isPDF = False
+        _isPDF = False
         if isinstance(key, AppKit.NSImage):
             image = key
             key = id(key)
+        if pageNumber is not None:
+            key = "%s-%s" % (key, pageNumber)
         if key not in self._cachedImages:
             if image is None:
                 if path.startswith("http"):
                     url = AppKit.NSURL.URLWithString_(path)
                 else:
                     url = AppKit.NSURL.fileURLWithPath_(path)
-                isPDF = AppKit.PDFDocument.alloc().initWithURL_(url) is not None
-                if isPDF:
+                _isPDF, _ = isPDF(url)
+                _isGIF, _ = isGIF(url)
+                if _isPDF:
                     pdf = Quartz.CGPDFDocumentCreateWithURL(url)
                     if pdf is not None:
                         if pageNumber is None:
                             pageNumber = Quartz.CGPDFDocumentGetNumberOfPages(pdf)
-                        self._cachedImages[key] = isPDF, Quartz.CGPDFDocumentGetPage(pdf, pageNumber)
+                        self._cachedImages[key] = _isPDF, Quartz.CGPDFDocumentGetPage(pdf, pageNumber)
                     else:
                         raise DrawBotError("No pdf found at %s" % key)
+                elif _isGIF:
+                    if pageNumber is None:
+                        pageNumber = gifTools.gifFrameCount(url)
+                    image = gifTools.gifFrameAtIndex(url, pageNumber-1)
+                    data = image.TIFFRepresentation()
+                    source = Quartz.CGImageSourceCreateWithData(data, {})
+                    if source is not None:
+                        self._cachedImages[key] = False, Quartz.CGImageSourceCreateImageAtIndex(source, 0, None)
+                    else:
+                        raise DrawBotError("No image found at frame %s in %s" % (pageNumber, key))
                 else:
                     image = AppKit.NSImage.alloc().initByReferencingURL_(url)
-            if image and not isPDF:
+            if image and not _isPDF:
                 data = image.TIFFRepresentation()
                 source = Quartz.CGImageSourceCreateWithData(data, {})
                 if source is not None:
-                    self._cachedImages[key] = isPDF, Quartz.CGImageSourceCreateImageAtIndex(source, 0, None)
+                    self._cachedImages[key] = _isPDF, Quartz.CGImageSourceCreateImageAtIndex(source, 0, None)
                 else:
                     raise DrawBotError("No image found at %s" % key)
         return self._cachedImages[key]
 
     def _image(self, path, (x, y), alpha, pageNumber):
         self._save()
-        isPDF, image = self._getImageSource(path, pageNumber)
+        _isPDF, image = self._getImageSource(path, pageNumber)
         if image is not None:
             Quartz.CGContextSetAlpha(self._pdfContext, alpha)
-            if isPDF:
+            if _isPDF:
+                Quartz.CGContextSaveGState(self._pdfContext)
+                Quartz.CGContextTranslateCTM(self._pdfContext, x, y)
                 Quartz.CGContextDrawPDFPage(self._pdfContext, image)
+                Quartz.CGContextRestoreGState(self._pdfContext)
             else:
                 w = Quartz.CGImageGetWidth(image)
                 h = Quartz.CGImageGetHeight(image)
@@ -293,8 +313,18 @@ class PDFContext(BaseContext):
         else:
             c = shadow.color.getNSObject()
             color = self._rgbNSColorToCGColor(c)
-
-        Quartz.CGContextSetShadowWithColor(self._pdfContext, self._state.shadow.offset, self._state.shadow.blur, color)
+        # XXX
+        # needs to be solved
+        # for now adjust the documentation
+        # currentTransformation = Quartz.CGContextGetUserSpaceToDeviceSpaceTransform(self._pdfContext)
+        # scaleX = math.sqrt(currentTransformation[0] * currentTransformation[0] + currentTransformation[1] * currentTransformation[1])
+        # scaleY = math.sqrt(currentTransformation[2] * currentTransformation[2] + currentTransformation[3] * currentTransformation[3])
+        x, y = self._state.shadow.offset
+        # x *= scaleX
+        # y *= scaleY
+        blur = self._state.shadow.blur
+        # blur *= (scaleX + scaleY) / 2.
+        Quartz.CGContextSetShadowWithColor(self._pdfContext, (x, y), blur, color)
 
     def _pdfGradient(self, gradient):
         if gradient.cmykColors:
@@ -336,3 +366,15 @@ class PDFContext(BaseContext):
             # gray color
             return Quartz.CGColorCreateGenericGray(c.whiteComponent(), c.alphaComponent())
         return Quartz.CGColorCreateGenericRGB(c.redComponent(), c.greenComponent(), c.blueComponent(), c.alphaComponent())
+    
+    def _linkDestination(self, name, (x, y)):
+        if (x, y) == (None, None):
+            x, y = self.width * 0.5, self.height * 0.5
+        x = max(0, min(x, self.width))
+        y = max(0, min(y, self.height))
+        centerPoint = Quartz.CGPoint(x, y)
+        Quartz.CGPDFContextAddDestinationAtPoint(self._pdfContext, name, centerPoint)
+
+    def _linkRect(self, name, (x, y, w, h)):
+        rectBox = Quartz.CGRectMake(x, y, w, h)
+        Quartz.CGPDFContextSetDestinationForRect(self._pdfContext, name, rectBox)
