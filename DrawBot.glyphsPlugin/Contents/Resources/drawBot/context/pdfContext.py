@@ -1,3 +1,5 @@
+import platform
+from distutils.version import StrictVersion
 import AppKit
 import CoreText
 import Quartz
@@ -10,6 +12,10 @@ from baseContext import BaseContext, FormattedString
 from drawBot.misc import DrawBotError, isPDF, isGIF
 
 from objc import super
+
+osVersionCurrent = StrictVersion(platform.mac_ver()[0])
+osVersion10_11 = StrictVersion("10.11")
+
 
 def sendPDFtoPrinter(pdfDocument):
     printInfo = AppKit.NSPrintInfo.sharedPrintInfo()
@@ -130,19 +136,19 @@ class PDFContext(BaseContext):
             self._pdfPath(self._state.path)
             Quartz.CGContextClip(self._pdfContext)
 
-    def _textBox(self, txt, (x, y, w, h), align):
-        canDoGradients = not isinstance(txt, FormattedString)
+    def _textBox(self, txt, box, align):
+        path, (x, y) = self._getPathForFrameSetter(box)
+
+        canDoGradients = True
         attrString = self.attributedString(txt, align=align)
-        if self._state.text.hyphenation:
-            attrString = self.hyphenateAttributedString(attrString, w)
+        if self._state.hyphenation:
+            attrString = self.hyphenateAttributedString(attrString, path)
 
         setter = CoreText.CTFramesetterCreateWithAttributedString(attrString)
-        path = Quartz.CGPathCreateMutable()
-        Quartz.CGPathAddRect(path, None, Quartz.CGRectMake(x, y, w, h))
-        box = CoreText.CTFramesetterCreateFrame(setter, (0, 0), path, None)
+        frame = CoreText.CTFramesetterCreateFrame(setter, (0, 0), path, None)
 
-        ctLines = CoreText.CTFrameGetLines(box)
-        origins = CoreText.CTFrameGetLineOrigins(box, (0, len(ctLines)), None)
+        ctLines = CoreText.CTFrameGetLines(frame)
+        origins = CoreText.CTFrameGetLineOrigins(frame, (0, len(ctLines)), None)
         for i, (originX, originY) in enumerate(origins):
             ctLine = ctLines[i]
             bounds = CoreText.CTLineGetImageBounds(ctLine, self._pdfContext)
@@ -195,6 +201,14 @@ class PDFContext(BaseContext):
                         Quartz.CGContextSetLineJoin(self._pdfContext, self._state.lineJoin)
                 if fillColor is not None and strokeColor is not None:
                     drawingMode = Quartz.kCGTextFillStroke
+                    if osVersionCurrent >= osVersion10_11:
+                        # solve bug in OSX where the stroke color is the same as the fill color
+                        # simple solution: draw it twice...
+                        drawingMode = Quartz.kCGTextFill
+                        Quartz.CGContextSetTextDrawingMode(self._pdfContext, drawingMode)
+                        Quartz.CGContextSetTextPosition(self._pdfContext, x+originX, y+originY+baselineShift)
+                        CoreText.CTRunDraw(ctRun, self._pdfContext, (0, 0))
+                        drawingMode = Quartz.kCGTextStroke
 
                 if drawingMode is not None:
                     Quartz.CGContextSetTextDrawingMode(self._pdfContext, drawingMode)
@@ -366,7 +380,7 @@ class PDFContext(BaseContext):
             # gray color
             return Quartz.CGColorCreateGenericGray(c.whiteComponent(), c.alphaComponent())
         return Quartz.CGColorCreateGenericRGB(c.redComponent(), c.greenComponent(), c.blueComponent(), c.alphaComponent())
-    
+
     def _linkDestination(self, name, (x, y)):
         if (x, y) == (None, None):
             x, y = self.width * 0.5, self.height * 0.5

@@ -1,15 +1,13 @@
 import AppKit
-import Quartz
 
 import sys
 import os
-
-import vanilla
 
 
 # ==========
 # = errors =
 # ==========
+
 
 class DrawBotError(TypeError):
     pass
@@ -80,7 +78,7 @@ def optimizePath(path):
 # = number tools =
 # ================
 
-def formatNumber(value, decimals=3):
+def formatNumber(value, decimals=2):
     value = float(value)
     if value.is_integer():
         return "%i" % value
@@ -176,12 +174,14 @@ class Warnings(object):
         sys.stderr.write("*** DrawBot warning: %s ***\n" % message)
         self._warnMessages.add(message)
 
+
 warnings = Warnings()
 
 
 class VariableController(object):
 
     def __init__(self, attributes, callback, document=None):
+        import vanilla
         self._callback = callback
         self._attributes = None
         self.w = vanilla.FloatingWindow((250, 50))
@@ -192,6 +192,7 @@ class VariableController(object):
         self.w.setTitle("Variables")
 
     def buildUI(self, attributes):
+        import vanilla
         if self._attributes == attributes:
             return
         self._attributes = attributes
@@ -217,7 +218,8 @@ class VariableController(object):
                 # set the label view
                 setattr(ui, "%sLabel" % name, label)
             else:
-                args["title"] = name
+                if "title" not in args:
+                    args["title"] = name
             # check the provided args and add required keys
             if uiElement == "ColorWell":
                 # a color well needs a color to be set

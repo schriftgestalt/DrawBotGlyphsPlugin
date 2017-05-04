@@ -75,25 +75,25 @@ def _execute(cmds):
     return stderr, stdout
 
 
-localSitePackagesCode = u"""
+getLocalPythonPathCode = u"""
 from distutils import sysconfig
 
-_site_packages_path = sysconfig.get_python_lib()
-print _site_packages_path
+_path = sysconfig.get_python_lib(%s)
+
+print _path
 """
 
 
-def getLocalCurrentPythonVersionDirName():
+def getLocalPythonVersionDirName(standardLib=True):
     tempFile = tempfile.mkstemp(".py")[1]
-
+    argument = ""
+    if standardLib:
+        argument = "standard_lib=True"
     f = open(tempFile, "w")
-    f.write(localSitePackagesCode)
+    f.write(getLocalPythonPathCode % argument)
     f.close()
-
     log = _execute(["python", tempFile])[1]
-
     sitePackages = log.split("\n")[0]
-
     os.remove(tempFile)
     if os.path.exists(sitePackages):
         return sitePackages
@@ -101,7 +101,8 @@ def getLocalCurrentPythonVersionDirName():
         return False
 
 
-localSitePackagesPath = getLocalCurrentPythonVersionDirName()
+localStandardLibPath = getLocalPythonVersionDirName(standardLib=True)
+localSitePackagesPath = getLocalPythonVersionDirName(standardLib=False)
 
 
 class DrawBotNamespace(dict):
@@ -164,6 +165,8 @@ class ScriptRunner(object):
         sys.argv = [fileName]
         os.chdir(curDir)
         sys.path.insert(0, curDir)
+        if localStandardLibPath and localStandardLibPath not in sys.path:
+            site.addsitedir(localStandardLibPath)
         if localSitePackagesPath and localSitePackagesPath not in sys.path:
             site.addsitedir(localSitePackagesPath)
         # here we go
