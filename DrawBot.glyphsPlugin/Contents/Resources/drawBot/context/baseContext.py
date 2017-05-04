@@ -868,8 +868,11 @@ class FormattedString(object):
             return
         attributes = {}
         if self._font:
-            fontName = _tryInstallFontFromFontName(self._font)
-            font = AppKit.NSFont.fontWithName_size_(fontName, self._fontSize)
+            font = _tryInstallFontFromFontName(self._font)
+            if font is not None and isinstance(font, tuple):
+                font = font[1]
+            if font is None:
+                font = AppKit.NSFont.fontWithName_size_(self._font, self._fontSize)
             if font is None:
                 ff = self._fallbackFont
                 if ff is None:
@@ -1030,6 +1033,8 @@ class FormattedString(object):
         from a path.
         """
         font = _tryInstallFontFromFontName(font)
+        if font is not None:
+            font = font[0]
         font = font.encode("ascii", "ignore")
         self._font = font
         if fontSize is not None:

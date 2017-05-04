@@ -1,6 +1,6 @@
 import AppKit
 import CoreText
-import Quartz
+import Quartz, CoreGraphics
 
 import math
 import os
@@ -2068,17 +2068,24 @@ class DrawBotDrawingTool(object):
             uninstallFont(path)
         """
         if path in self._tempInstalledFonts:
-            return self._tempInstalledFonts[path]
+            return (path, self._tempInstalledFonts[path])
 
-        success, error = self._dummyContext.installFont(path)
-        self._addInstruction("installFont", path)
-
-        psName = self._dummyContext._fontNameForPath(path)
-        self._tempInstalledFonts[path] = psName
-
-        if not success:
-            warnings.warn("install font: %s" % error)
-        return psName
+        from CoreText import CTFontCreateWithGraphicsFont
+        from Quartz.CoreGraphics import CGDataProviderCreateWithFilename, CGFontCreateWithDataProvider, CGFontCopyPostScriptName
+        
+        dataProvider = CGDataProviderCreateWithFilename(str(path))
+        psName = None
+        if dataProvider:
+           cgFont = CGFontCreateWithDataProvider(dataProvider)
+           if cgFont:
+               ctFont = CTFontCreateWithGraphicsFont(cgFont, 12.0, None, None)
+               psName = CGFontCopyPostScriptName(cgFont)
+               print ctFont, psName
+        if psName:
+            self._tempInstalledFonts[psName] = ctFont
+        else:
+            warnings.warn("install font: %s" % path)
+        return (psName, ctFont)
 
     def uninstallFont(self, path):
         """
@@ -2105,7 +2112,10 @@ class DrawBotDrawingTool(object):
                 fontName = self.installFont(fontPath)
             else:
                 raise DrawBotError("Font '%s' is not .ttf, .otf or .ttc." % fontPath)
-        return fontName
+            return fontName
+        if fontName in self._tempInstalledFonts:
+            return (fontName, self._tempInstalledFonts[fontName])
+        return None
 
     def fontAscender(self):
         """
