@@ -1019,7 +1019,7 @@ class FormattedString(object):
     def __repr__(self):
         return self._attributedString.string()
 
-    def font(self, font, fontSize=None):
+    def loadFont(self, font, fontSize=None):
         """
         Set a font with the name of the font.
         If a font path is given the font will be installed and used directly.
@@ -1032,6 +1032,8 @@ class FormattedString(object):
         The font name is returned, which is handy when the font was loaded
         from a path.
         """
+        from drawBot.drawBotDrawingTools import _drawBotDrawingTool
+        _drawBotDrawingTool.unloadFont(font)
         font = _tryInstallFontFromFontName(font)
         if font is not None:
             font = font[0]

@@ -2083,6 +2083,7 @@ class DrawBotDrawingTool(object):
                print ctFont, psName
         if psName:
             self._tempInstalledFonts[psName] = ctFont
+            self._tempInstalledFonts[path] = ctFont
         else:
             warnings.warn("install font: %s" % path)
         return (psName, ctFont)
@@ -2098,6 +2099,16 @@ class DrawBotDrawingTool(object):
             warnings.warn("uninstall font: %s" % error)
         self._addInstruction("uninstallFont", path)
 
+    def unloadFont(self, fontPath):
+        if fontPath in self._tempInstalledFonts:
+            font = self._tempInstalledFonts[fontPath]
+            allKeys = set()
+            for key, value in self._tempInstalledFonts.items():
+                if value == font:
+                    allKeys.add(key)
+            for key in allKeys:
+                del self._tempInstalledFonts[key]
+        
     def _uninstallAllFonts(self):
         for path in self._tempInstalledFonts:
             self._dummyContext.uninstallFont(path)
