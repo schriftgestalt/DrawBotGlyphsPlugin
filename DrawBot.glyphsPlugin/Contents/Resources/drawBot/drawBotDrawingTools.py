@@ -1292,8 +1292,13 @@ class DrawBotDrawingTool(object):
 
             font("Times-Italic")
         """
-        fontName = self._tryInstallFontFromFontName(fontName)
-        fontName = fontName.encode("ascii", "ignore")
+        _fontName = self._tryInstallFontFromFontName(fontName)
+        if _fontName is not None and isinstance(_fontName, tuple):
+            _fontName = _fontName[1]
+        if _fontName is None:
+            _fontName = fontName
+        
+        _fontName = _fontName.encode("ascii", "ignore")
         self._dummyContext.font(fontName, fontSize)
         self._addInstruction("font", fontName, fontSize)
         return fontName

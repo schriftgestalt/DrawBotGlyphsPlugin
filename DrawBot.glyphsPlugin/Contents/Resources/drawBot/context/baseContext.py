@@ -1034,10 +1034,27 @@ class FormattedString(object):
         """
         from drawBot.drawBotDrawingTools import _drawBotDrawingTool
         _drawBotDrawingTool.unloadFont(font)
-        font = _tryInstallFontFromFontName(font)
-        if font is not None:
-            font = font[0]
-        font = font.encode("ascii", "ignore")
+        return self.font(font, fontSize)
+    
+    def font(self, font, fontSize=None):
+        """
+        Set a font with the name of the font.
+        If a font path is given the font will be installed and used directly.
+        Optionally a `fontSize` can be set directly.
+        The default font, also used as fallback font, is 'LucidaGrande'.
+        The default `fontSize` is 10pt.
+
+        The name of the font relates to the font's postscript name.
+
+        The font name is returned, which is handy when the font was loaded
+        from a path.
+        """
+        _font = _tryInstallFontFromFontName(font)
+        if _font is None:
+            _font = font # no locally installed font found.
+        elif isinstance(_font, tuple):
+            _font = _font[0]
+        font = _font.encode("ascii", "ignore")
         self._font = font
         if fontSize is not None:
             self._fontSize = fontSize
