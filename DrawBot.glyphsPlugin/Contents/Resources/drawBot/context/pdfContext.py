@@ -1,20 +1,21 @@
+from __future__ import absolute_import
+
 import platform
 from distutils.version import StrictVersion
 import AppKit
 import CoreText
 import Quartz
 
-import math
+from .tools import gifTools
 
-from tools import gifTools
-
-from baseContext import BaseContext, FormattedString
+from .baseContext import BaseContext
 from drawBot.misc import DrawBotError, isPDF, isGIF
 
 from objc import super
 
 osVersionCurrent = StrictVersion(platform.mac_ver()[0])
 osVersion10_11 = StrictVersion("10.11")
+osVersion10_13 = StrictVersion("10.13")
 
 
 def sendPDFtoPrinter(pdfDocument):
@@ -28,6 +29,9 @@ def sendPDFtoPrinter(pdfDocument):
 class PDFContext(BaseContext):
 
     fileExtensions = ["pdf"]
+    saveImageOptions = [
+        ("multipage", "If False, only the last page in the document will be saved into the output PDF. This value is ignored if it is None (default)."),
+    ]
 
     def __init__(self):
         super(PDFContext, self).__init__()
@@ -57,13 +61,18 @@ class PDFContext(BaseContext):
         Quartz.CGPDFContextClose(self._pdfContext)
         self._hasContext = False
 
-    def _saveImage(self, path, multipage):
-        self._closeContext()
-        self._writeDataToFile(self._pdfData, path, multipage)
-        self._pdfContext = None
-        self._pdfData = None
+    def _saveImage(self, path, options):
+        pool = AppKit.NSAutoreleasePool.alloc().init()
+        try:
+            self._closeContext()
+            self._writeDataToFile(self._pdfData, path, options)
+            self._pdfContext = None
+            self._pdfData = None
+        finally:
+            del pool
 
-    def _writeDataToFile(self, data, path, multipage):
+    def _writeDataToFile(self, data, path, options):
+        multipage = options.get("multipage")
         if multipage is None:
             multipage = True
         if not multipage:
@@ -190,7 +199,7 @@ class PDFContext(BaseContext):
                 if strokeColor is not None:
                     drawingMode = Quartz.kCGTextStroke
                     self._pdfStrokeColor(strokeColor)
-                    Quartz.CGContextSetLineWidth(self._pdfContext, strokeWidth)
+                    Quartz.CGContextSetLineWidth(self._pdfContext, abs(strokeWidth))
                     if self._state.lineDash is not None:
                         Quartz.CGContextSetLineDash(self._pdfContext, 0, self._state.lineDash, len(self._state.lineDash))
                     if self._state.miterLimit is not None:
@@ -201,7 +210,7 @@ class PDFContext(BaseContext):
                         Quartz.CGContextSetLineJoin(self._pdfContext, self._state.lineJoin)
                 if fillColor is not None and strokeColor is not None:
                     drawingMode = Quartz.kCGTextFillStroke
-                    if osVersionCurrent >= osVersion10_11:
+                    if osVersionCurrent >= osVersion10_11 and osVersion10_11 < osVersion10_13:
                         # solve bug in OSX where the stroke color is the same as the fill color
                         # simple solution: draw it twice...
                         drawingMode = Quartz.kCGTextFill
@@ -262,7 +271,8 @@ class PDFContext(BaseContext):
                     raise DrawBotError("No image found at %s" % key)
         return self._cachedImages[key]
 
-    def _image(self, path, (x, y), alpha, pageNumber):
+    def _image(self, path, xy, alpha, pageNumber):
+        x, y = xy
         self._save()
         _isPDF, image = self._getImageSource(path, pageNumber)
         if image is not None:
@@ -381,7 +391,8 @@ class PDFContext(BaseContext):
             return Quartz.CGColorCreateGenericGray(c.whiteComponent(), c.alphaComponent())
         return Quartz.CGColorCreateGenericRGB(c.redComponent(), c.greenComponent(), c.blueComponent(), c.alphaComponent())
 
-    def _linkDestination(self, name, (x, y)):
+    def _linkDestination(self, name, xy):
+        x, y = xy
         if (x, y) == (None, None):
             x, y = self.width * 0.5, self.height * 0.5
         x = max(0, min(x, self.width))
@@ -389,6 +400,7 @@ class PDFContext(BaseContext):
         centerPoint = Quartz.CGPoint(x, y)
         Quartz.CGPDFContextAddDestinationAtPoint(self._pdfContext, name, centerPoint)
 
-    def _linkRect(self, name, (x, y, w, h)):
+    def _linkRect(self, name, xywh):
+        x, y, w, h = xywh
         rectBox = Quartz.CGRectMake(x, y, w, h)
         Quartz.CGPDFContextSetDestinationForRect(self._pdfContext, name, rectBox)

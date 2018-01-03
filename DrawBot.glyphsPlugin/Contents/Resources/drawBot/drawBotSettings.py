@@ -1,4 +1,9 @@
+import sys
 
-appName = "DrawBot"
+if sys.version_info[0] >= 3:
+    appName = "DrawBotPy3"
+else:
+    appName = "DrawBot"
 
-__version__ = "3.95"
+
+__version__ = "3.111"

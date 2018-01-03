@@ -1,20 +1,40 @@
+from __future__ import absolute_import
+
+from fontTools.misc.py23 import round
 import AppKit
 import CoreText
 
 import os
 import base64
-import random
 
 from fontTools.misc.xmlWriter import XMLWriter
 
 from fontTools.misc.transform import Transform
 
-from tools.openType import getFeatureTagsForFontAttributes
-from baseContext import BaseContext, GraphicsState, Shadow, Color, FormattedString, Gradient
+from .tools.openType import getFeatureTagsForFontAttributes
+from .baseContext import BaseContext, GraphicsState, Shadow, Color, Gradient
+from .imageContext import _makeBitmapImageRep
 
 from drawBot.misc import warnings, formatNumber
 
 from objc import super
+
+class _UniqueIDGenerator(object):
+
+    def __init__(self, prefix):
+        self._prefix = prefix
+        self._intGenerator = self._intGeneratorFunc()
+
+    def gen(self):
+        return "%s%s" % (self._prefix, next(self._intGenerator))
+
+    @staticmethod
+    def _intGeneratorFunc():
+        i = 1
+        while True:
+            yield i
+            i += 1
+
 
 # simple file object
 
@@ -31,12 +51,12 @@ class SVGFile(object):
 
     def writeToFile(self, path):
         data = self.read()
-        f = open(path, "w")
+        f = open(path, "wb")
         f.write(data)
         f.close()
 
     def read(self):
-        return "".join(self._svgdata)
+        return b"".join(self._svgdata)
 
     def close(self):
         pass
@@ -52,23 +72,24 @@ class SVGColor(Color):
         if c:
             if c.numberOfComponents() == 2:
                 # gray number
-                r = g = b = int(255*c.whiteComponent())
+                r = g = b = int(255 * c.whiteComponent())
             else:
-                r = int(255*c.redComponent())
-                g = int(255*c.greenComponent())
-                b = int(255*c.blueComponent())
+                r = int(255 * c.redComponent())
+                g = int(255 * c.greenComponent())
+                b = int(255 * c.blueComponent())
             a = c.alphaComponent()
-            return "rgba(%s,%s,%s,%s)" % (r, g, b, a)
+            return "rgb(%s,%s,%s)" % (r, g, b), a
         return None
 
 
 class SVGGradient(Gradient):
 
     _colorClass = SVGColor
+    _idGenerator = _UniqueIDGenerator("gradient")
 
     def __init__(self, *args, **kwargs):
         super(SVGGradient, self).__init__(*args, **kwargs)
-        self.tagID = id(self)
+        self.tagID = self._idGenerator.gen()
 
     def copy(self):
         new = super(SVGShadow, self).copy()
@@ -102,7 +123,10 @@ class SVGGradient(Gradient):
         ctx.newline()
         for i, color in enumerate(self.colors):
             position = self.positions[i]
-            stopData = {"offset": position, "stop-color": color.svgColor()}
+            c, a = color.svgColor()
+            stopData = {"offset": position, "stop-color": c}
+            if a != 1:
+                stopData["stop-opacity"] = a
             ctx.simpletag("stop", **stopData)
             ctx.newline()
         ctx.endtag("linearGradient")
@@ -120,7 +144,10 @@ class SVGGradient(Gradient):
         ctx.newline()
         for i, color in enumerate(self.colors):
             position = self.positions[i]
-            stopData = {"offset": position, "stop-color": color.svgColor()}
+            c, a = color.svgColor()
+            stopData = {"offset": position, "stop-color": c}
+            if a != 1:
+                stopData["stop-opacity"] = a
             ctx.simpletag("stop", **stopData)
             ctx.newline()
         ctx.endtag("radialGradient")
@@ -130,10 +157,11 @@ class SVGGradient(Gradient):
 class SVGShadow(Shadow):
 
     _colorClass = SVGColor
+    _idGenerator = _UniqueIDGenerator("shadow")
 
     def __init__(self, *args, **kwargs):
         super(SVGShadow, self).__init__(*args, **kwargs)
-        self.tagID = id(self)
+        self.tagID = self._idGenerator.gen()
 
     def copy(self):
         new = super(SVGShadow, self).copy()
@@ -165,7 +193,10 @@ class SVGShadow(Shadow):
         offsetData = {"dx": dx, "dy": dy, "result": "offsetblur"}
         ctx.simpletag("feOffset", **offsetData)
         ctx.newline()
-        colorData = {"flood-color": self.color.svgColor()}
+        c, a = self.color.svgColor()
+        colorData = {"flood-color": c}
+        if a != 1:
+            colorData["flood-opacity"] = a
         ctx.simpletag("feFlood", **colorData)
         ctx.newline()
         ctx.simpletag("feComposite", in2="offsetblur", operator="in")
@@ -205,19 +236,21 @@ class SVGContext(BaseContext):
     _shadowClass = SVGShadow
     _colorClass = SVGColor
     _gradientClass = SVGGradient
+    _clipPathIDGenerator = _UniqueIDGenerator("clip")
 
     _svgFileClass = SVGFile
 
     _svgTagArguments = {
         "version": "1.1",
         "xmlns": "http://www.w3.org/2000/svg",
-        }
+        "xmlns:xlink": "http://www.w3.org/1999/xlink"
+    }
 
     _svgLineJoinStylesMap = {
-                    AppKit.NSMiterLineJoinStyle: "miter",
-                    AppKit.NSRoundLineJoinStyle: "round",
-                    AppKit.NSBevelLineJoinStyle: "bevel"
-                    }
+        AppKit.NSMiterLineJoinStyle: "miter",
+        AppKit.NSRoundLineJoinStyle: "round",
+        AppKit.NSBevelLineJoinStyle: "bevel"
+    }
 
     _svgLineCapStylesMap = {
         AppKit.NSButtLineCapStyle: "butt",
@@ -227,6 +260,9 @@ class SVGContext(BaseContext):
 
     indentation = " "
     fileExtensions = ["svg"]
+    saveImageOptions = [
+        ("multipage", "Output a numbered svg file for each page or frame in the document."),
+    ]
 
     def __init__(self):
         super(SVGContext, self).__init__()
@@ -272,6 +308,7 @@ class SVGContext(BaseContext):
 
     def _reset(self, other=None):
         self._embeddedFonts = set()
+        self._embeddedImages = dict()
 
     def _newPage(self, width, height):
         if hasattr(self, "_svgContext"):
@@ -287,7 +324,8 @@ class SVGContext(BaseContext):
         self._svgContext.newline()
         self._state.transformMatrix = self._state.transformMatrix.scale(1, -1).translate(0, -self.height)
 
-    def _saveImage(self, path, multipage):
+    def _saveImage(self, path, options):
+        multipage = options.get("multipage")
         if multipage is None:
             multipage = False
         self._svgContext.endtag("svg")
@@ -325,7 +363,7 @@ class SVGContext(BaseContext):
             self._svgEndClipPath()
 
     def _clipPath(self):
-        uniqueID = self._getUniqueID()
+        uniqueID = self._clipPathIDGenerator.gen()
         self._svgContext.begintag("clipPath", id=uniqueID)
         self._svgContext.newline()
         data = dict()
@@ -356,7 +394,7 @@ class SVGContext(BaseContext):
         data = {
             "text-anchor": "start",
             "transform": self._svgTransform(self._state.transformMatrix.translate(x, y + self.height).scale(1, -1))
-            }
+        }
         if self._state.shadow is not None:
             data["filter"] = "url(#%s_flipped)" % self._state.shadow.tagID
         self._svgContext.begintag("text", **data)
@@ -387,11 +425,17 @@ class SVGContext(BaseContext):
                 spanData = dict(defaultData)
                 fill = self._colorClass(fillColor).svgColor()
                 if fill:
-                    spanData["fill"] = fill
+                    c, a = fill
+                    spanData["fill"] = c
+                    if a != 1:
+                        spanData["fill-opacity"] = a
                 stroke = self._colorClass(strokeColor).svgColor()
                 if stroke:
-                    spanData["stroke"] = stroke
-                    spanData["stroke-width"] = formatNumber(abs(strokeWidth))
+                    c, a = stroke
+                    spanData["stroke"] = c
+                    if a != 1:
+                        spanData["stroke-opacity"] = a
+                    spanData["stroke-width"] = formatNumber(abs(strokeWidth) * .5)
                 spanData["font-family"] = fontName
                 spanData["font-size"] = formatNumber(fontSize)
 
@@ -433,26 +477,60 @@ class SVGContext(BaseContext):
         self._svgContext.newline()
         self._svgEndClipPath()
 
-    def _image(self, path, (x, y), alpha, pageNumber):
+    def _image(self, path, xy, alpha, pageNumber):
         # todo:
         # support embedding of images when the source is not a path but
         # a nsimage or a pdf / gif with a pageNumber
+        x, y = xy
         self._svgBeginClipPath()
         if path.startswith("http"):
             url = AppKit.NSURL.URLWithString_(path)
         else:
             url = AppKit.NSURL.fileURLWithPath_(path)
-        im = AppKit.NSImage.alloc().initByReferencingURL_(url)
-        w, h = im.size()
-        data = dict()
-        data["x"] = 0
-        data["y"] = 0
-        data["width"] = w
-        data["height"] = h
-        data["opacity"] = alpha
-        data["transform"] = self._svgTransform(self._state.transformMatrix.translate(x, y + h).scale(1, -1))
-        data["xlink:href"] = path
-        self._svgContext.simpletag("image", **data)
+        image = AppKit.NSImage.alloc().initByReferencingURL_(url)
+        width, height = image.size()
+
+        if path not in self._embeddedImages:
+            # get a unique id for the image
+            imageID = "image_%s" % (len(self._embeddedImages) + 1)
+            # store it
+            self._embeddedImages[path] = imageID
+            _, ext = os.path.splitext(path)
+            mimeSubtype = ext[1:].lower()  # remove the dot, make lowercase
+            if mimeSubtype == "jpg":
+                mimeSubtype = "jpeg"
+            if mimeSubtype not in ("png", "jpeg"):
+                # the image is not a png or a jpeg
+                # convert it to a png
+                mimeSubtype = "png"
+                imageRep = _makeBitmapImageRep(image)
+                imageData = imageRep.representationUsingType_properties_(AppKit.NSPNGFileType, None)
+            else:
+                imageData = AppKit.NSData.dataWithContentsOfURL_(url).bytes()
+
+            defData = [
+                ("id", imageID),
+                ("width", width),
+                ("height", height),
+                ("xlink:href", "data:image/%s;base64,%s" % (mimeSubtype, base64.b64encode(imageData).decode("ascii")))
+            ]
+            self._svgContext.begintag("defs")
+            self._svgContext.newline()
+            self._svgContext.simpletag("image", defData)
+            self._svgContext.newline()
+            self._svgContext.endtag("defs")
+            self._svgContext.newline()
+        else:
+            imageID = self._embeddedImages[path]
+
+        data = [
+            ("x", 0),
+            ("y", 0),
+            ("opacity", alpha),
+            ("transform", self._svgTransform(self._state.transformMatrix.translate(x, y + height).scale(1, -1))),
+            ("xlink:href", "#%s" % imageID)
+        ]
+        self._svgContext.simpletag("use", data)
         self._svgContext.newline()
         self._svgEndClipPath()
 
@@ -461,13 +539,8 @@ class SVGContext(BaseContext):
 
     # helpers
 
-    def _getUniqueID(self):
-        b = [chr(random.randrange(256)) for i in range(16)]
-        i = long(('%02x'*16) % tuple(map(ord, b)), 16)
-        return '%032x' % i
-
     def _svgTransform(self, transform):
-        return "matrix(%s)" % (",".join([str(s) for s in transform]))
+        return "matrix(%s)" % (",".join([repr(s) for s in transform]))
 
     def _svgPath(self, path, transformMatrix=None):
         path = path.getNSBezierPath()
@@ -498,7 +571,7 @@ class SVGContext(BaseContext):
                 previousPoint = points[-1]
             elif instruction == AppKit.NSClosePathBezierPathElement:
                 svg += "Z "
-        return svg
+        return svg.strip()
 
     def _svgBeginClipPath(self):
         if self._state.clipPathID:
@@ -516,10 +589,18 @@ class SVGContext(BaseContext):
         data = dict()
         fill = self._svgFillColor()
         if fill:
-            data["fill"] = fill
+            c, a = fill
+            data["fill"] = c
+            if a != 1:
+                data["fill-opacity"] = a
+        else:
+            data["fill"] = "none"
         stroke = self._svgStrokeColor()
         if stroke:
-            data["stroke"] = stroke
+            c, a = stroke
+            data["stroke"] = c
+            if a != 1:
+                data["stroke-opacity"] = a
             data["stroke-width"] = formatNumber(abs(self._state.strokeWidth))
         if self._state.lineDash:
             data["stroke-dasharray"] = ",".join([str(i) for i in self._state.lineDash])

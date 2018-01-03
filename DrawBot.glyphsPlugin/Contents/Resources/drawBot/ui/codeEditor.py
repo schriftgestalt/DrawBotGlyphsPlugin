@@ -1,9 +1,12 @@
+from __future__ import absolute_import
+
 import AppKit
-import objc
+from objc import super
 
 from keyword import kwlist
 from objc import super
-import re, traceback, sys
+import re
+import sys
 
 from pygments.lexers import PythonLexer, get_lexer_by_name
 from pygments.token import *
@@ -13,12 +16,14 @@ from pygments.styles.default import DefaultStyle
 try:
     import jedi
     hasJedi = True
-except:
+except Exception:
     hasJedi = False
 
 from vanilla import *
+from vanilla.py23 import python_method
+from fontTools.misc.py23 import PY3, unichr
 
-from lineNumberRulerView import NSLineNumberRuler
+from .lineNumberRulerView import NSLineNumberRuler
 from drawBot.misc import getDefault, getFontDefault, getColorDefault, DrawBotError
 from drawBot.drawBotDrawingTools import _drawBotDrawingTool
 
@@ -42,10 +47,10 @@ basicParagraph.setTabStops_(AppKit.NSArray.array())
 basicParagraph.setLineHeightMultiple_(basicLineHeightMultiple)
 
 fallbackTypeAttributes = {
-              AppKit.NSFontAttributeName: fallbackFont,
-              AppKit.NSLigatureAttributeName: 0,
-              AppKit.NSParagraphStyleAttributeName: basicParagraph
-              }
+    AppKit.NSFontAttributeName: fallbackFont,
+    AppKit.NSLigatureAttributeName: 0,
+    AppKit.NSParagraphStyleAttributeName: basicParagraph
+}
 
 fallbackTracebackAttributes = dict(fallbackTypeAttributes)
 fallbackTracebackAttributes[AppKit.NSForegroundColorAttributeName] = AppKit.NSColor.redColor()
@@ -147,7 +152,7 @@ class _JumpToLineSheet(object):
         value = self.w.lineNumber.get()
         try:
             value = int(value.strip())
-        except:
+        except Exception:
             value = None
         self._callback(value)
         self.closeCallback(sender)
@@ -179,9 +184,9 @@ def _hexStringToNSColor(txt, default=AppKit.NSColor.blackColor()):
 
 def _NSColorToHexString(color):
     color = color.colorUsingColorSpaceName_(AppKit.NSCalibratedRGBColorSpace)
-    r = color.redComponent() * 255
-    g = color.greenComponent() * 255
-    b = color.blueComponent() * 255
+    r = round(color.redComponent() * 255)
+    g = round(color.greenComponent() * 255)
+    b = round(color.blueComponent() * 255)
     return "#%02X%02X%02X" % (r, g, b)
 
 
@@ -237,12 +242,13 @@ def _textAttributesForStyle(style, font=None, token=None):
         _textAttributesForStyleCache[token] = attr
     return attr
 
+
 _multiLineRE = re.compile(
     r"(\'\'\'|\"\"\"|/\*|<!--)"
     r".*?"
     r"(\'\'\'|\"\"\"|\*/|--!>)",
     re.DOTALL
-    )
+)
 
 _multiLineParts = [
     "\'\'\'",
@@ -266,6 +272,8 @@ def _pythonWordCompletions(text, charRange):
     if not hasJedi:
         return [], 0
     partialString = text.substringWithRange_(charRange)
+    if not partialString:
+        return [], 0
     keyWords = list(_drawBotDrawingTool.__all__)
     try:
         lines = text[:charRange.location].count("\n") + 1
@@ -274,30 +282,43 @@ def _pythonWordCompletions(text, charRange):
         else:
             columns = 0
             if text:
-                while text[charRange.location-columns] != "\n":
+                while text[charRange.location - columns] != "\n":
                     columns += 1
         script = jedi.api.Script(source=text, line=lines, column=columns)
-        keyWords += [c.word for c in script.complete()]
-    except:
+        keyWords += [c.name for c in script.completions()]
+    except Exception:
         pass
     keyWords = [word for word in sorted(keyWords) if word.startswith(partialString)]
     return keyWords, 0
 
+
 languagesIDEBehavior = {
-        "Python": {
-            "openToCloseMap": {"(": ")", "[": "]", "{": "}", "<": ">"},
-            "indentWithEndOfLine": [":", "(", "[", "{"],
-            "comment": "#",
-            "keywords": kwlist,
-            "wordCompletions": _pythonWordCompletions,
-            "dropPathFormatting": 'u"%s"',
-            "dropPathsFormatting": '[%s]',
-            "dropPathsSeperator": ", "
-        },
-    }
+    "Python": {
+        "openToCloseMap": {"(": ")", "[": "]", "{": "}", "<": ">"},
+        "indentWithEndOfLine": [":", "(", "[", "{"],
+        "comment": "#",
+        "keywords": kwlist,
+        "wordCompletions": _pythonWordCompletions,
+        "dropPathFormatting": 'u"%s"',
+        "dropPathsFormatting": '[%s]',
+        "dropPathsSeperator": ", "
+    },
+}
+if PY3:
+    languagesIDEBehavior["Python"]["dropPathFormatting"] = '%r'
 
 downArrowSelectionDirection = 0
 upArrowSelectionDirection = 1
+
+if PY3:
+    def _floatRepr(f):
+        """In Python 3, we may get float representations that are too precise,
+        like 0.199999999999999. That is not nice for our interactive number
+        editing."""
+        return str(round(f, 8))
+else:
+    def _floatRepr(f):
+        return f
 
 
 class CodeNSTextView(AppKit.NSTextView):
@@ -319,7 +340,7 @@ class CodeNSTextView(AppKit.NSTextView):
         self.setAllowsUndo_(True)
         try:
             self.setUsesFindBar_(True)
-        except:
+        except Exception:
             self.setUsesFindPanel_(True)
 
         self._usesTabs = False
@@ -443,27 +464,24 @@ class CodeNSTextView(AppKit.NSTextView):
     def setBackgroundColor_(self, color):
         # invert the insertioin pointer color
         # and the fallback text color and background color
-        try:
-            color = color.colorUsingColorSpaceName_(AppKit.NSCalibratedRGBColorSpace)
-            r = color.redComponent()
-            g = color.greenComponent()
-            b = color.blueComponent()
-            s = sum([r, g, b]) / 3.
-            inverseColor = s < .6
-            if inverseColor:
-                self._fallbackBackgroundColor = AppKit.NSColor.blackColor()
-                self._fallbackTextColor = AppKit.NSColor.whiteColor()
-                self.setInsertionPointColor_(AppKit.NSColor.whiteColor())
-            else:
-                self._fallbackBackgroundColor = AppKit.NSColor.whiteColor()
-                self._fallbackTextColor = AppKit.NSColor.blackColor()
-                self.setInsertionPointColor_(AppKit.NSColor.blackColor())
+        color = color.colorUsingColorSpaceName_(AppKit.NSCalibratedRGBColorSpace)
+        r = color.redComponent()
+        g = color.greenComponent()
+        b = color.blueComponent()
+        s = sum([r, g, b]) / 3.
+        inverseColor = s < .6
+        if inverseColor:
+            self._fallbackBackgroundColor = AppKit.NSColor.blackColor()
+            self._fallbackTextColor = AppKit.NSColor.whiteColor()
+            self.setInsertionPointColor_(AppKit.NSColor.whiteColor())
+        else:
+            self._fallbackBackgroundColor = AppKit.NSColor.whiteColor()
+            self._fallbackTextColor = AppKit.NSColor.blackColor()
+            self.setInsertionPointColor_(AppKit.NSColor.blackColor())
 
-            if self.enclosingScrollView():
-                self.enclosingScrollView().setBackgroundColor_(color)
-            self._updateRulersColors()
-        except:
-            print(traceback.format_exc())
+        if self.enclosingScrollView():
+            self.enclosingScrollView().setBackgroundColor_(color)
+        self._updateRulersColors()
         super(CodeNSTextView, self).setBackgroundColor_(color)
 
     def changeColor_(self, color):
@@ -502,6 +520,7 @@ class CodeNSTextView(AppKit.NSTextView):
         self._highlightSyntax(0, self.string())
         self._ignoreProcessEditing = False
 
+    @python_method
     def _highlightSyntax(self, location, text):
         if self.lexer() is None:
             return
@@ -556,9 +575,10 @@ class CodeNSTextView(AppKit.NSTextView):
                         valueY += add
                     else:
                         valueX += add
-                    value = "%s, %s" % (valueX, valueY)
+                    value = "%s, %s" % (_floatRepr(valueX), _floatRepr(valueY))
                 else:
                     value += add
+                    value = _floatRepr(value)
                 self._insertTextAndRun("%s" % value, selectedRange)
                 return
 
@@ -613,15 +633,15 @@ class CodeNSTextView(AppKit.NSTextView):
 
                     if isinstance(value, tuple):
                         valueX, valueY = value
-                        valueX += int(event.deltaX()*2) * add
-                        valueY -= int(event.deltaY()*2) * add
-                        txtValue = "%s, %s" % (valueX, valueY)
+                        valueX += int(event.deltaX() * 2) * add
+                        valueY -= int(event.deltaY() * 2) * add
+                        txtValue = "%s, %s" % (_floatRepr(valueX), _floatRepr(valueY))
                     else:
-                        value += int(event.deltaX()*2) * add
-                        txtValue = "%s" % value
+                        value += int(event.deltaX() * 2) * add
+                        txtValue = "%s" % _floatRepr(value)
 
                     self._insertTextAndRun(txtValue, selRng)
-            except:
+            except Exception:
                 pass
         super(CodeNSTextView, self).mouseDragged_(event)
 
@@ -635,11 +655,11 @@ class CodeNSTextView(AppKit.NSTextView):
         if string:
             selectedRange = self.selectedRange()
             try:
-                char = string[selectedRange.location-1]
-            except:
+                char = string[selectedRange.location - 1]
+            except Exception:
                 char = ""
             if char == ".":
-                self.setSelectedRange_((selectedRange.location-1, 1))
+                self.setSelectedRange_((selectedRange.location - 1, 1))
                 self.insertText_("self.")
                 return
         if self.usesTabs():
@@ -676,7 +696,7 @@ class CodeNSTextView(AppKit.NSTextView):
             return
         selectedRange = self.selectedRange()
         char = string[selectedRange.location]
-        self._balanceParenForChar(char, selectedRange.location+1)
+        self._balanceParenForChar(char, selectedRange.location + 1)
 
     def moveRight_(self, sender):
         super(CodeNSTextView, self).moveRight_(sender)
@@ -684,7 +704,7 @@ class CodeNSTextView(AppKit.NSTextView):
         if not string:
             return
         selectedRange = self.selectedRange()
-        char = string[selectedRange.location-1]
+        char = string[selectedRange.location - 1]
         self._balanceParenForChar(char, selectedRange.location)
 
     def moveWordLeft_(self, sender):
@@ -786,6 +806,7 @@ class CodeNSTextView(AppKit.NSTextView):
         func = languageData.get("wordCompletions", self._genericCompletions)
         return func(text, charRange)
 
+    @python_method
     def _genericCompletions(self, text, charRange):
         partialString = text.substringWithRange_(charRange)
         keyWords = list()
@@ -943,6 +964,7 @@ class CodeNSTextView(AppKit.NSTextView):
             return commentedLines
         self._filterLines(uncommentFilter)
 
+    @python_method
     def _jumpToLine(self, lineNumber):
         lines = 1
         string = self.string()
@@ -1010,8 +1032,8 @@ class CodeNSTextView(AppKit.NSTextView):
 
         for quoteMatch in _multiLineRE.finditer(string):
             start, end = quoteMatch.start(), quoteMatch.end()
-            quoteRange = (start, end-start)
-            if AppKit.NSLocationInRange(_lineStart, quoteRange) or AppKit.NSLocationInRange(_lineStart+_lineLength, quoteRange):
+            quoteRange = (start, end - start)
+            if AppKit.NSLocationInRange(_lineStart, quoteRange) or AppKit.NSLocationInRange(_lineStart + _lineLength, quoteRange):
                 quoteStart, quoteLenght = string.lineRangeForRange_(quoteRange)
                 lineStart, lineLength = AppKit.NSUnionRange(quoteRange, (_lineStart, _lineLength))
                 break
@@ -1051,6 +1073,7 @@ class CodeNSTextView(AppKit.NSTextView):
                 backgroundColor = _hexStringToNSColor(styles.background_color, self._fallbackBackgroundColor)
                 ruler.setRulerBackgroundColor_(backgroundColor)
 
+    @python_method
     def _deleteIndentation(self, sender, isForward, superFunc):
         selectedRange = self.selectedRange()
         if self.usesTabs() or selectedRange.length:
@@ -1076,6 +1099,7 @@ class CodeNSTextView(AppKit.NSTextView):
         else:
             superFunc(sender)
 
+    @python_method
     def _findMatchingParen(self, location, char, matchChar, end):
         add = 1
         if end:
@@ -1097,6 +1121,7 @@ class CodeNSTextView(AppKit.NSTextView):
             location += add
         return found
 
+    @python_method
     def _balanceParenForChar(self, char, location):
         if self.lexer() is None:
             return
@@ -1110,6 +1135,7 @@ class CodeNSTextView(AppKit.NSTextView):
             openToCloseMap = _reverseMap(openToCloseMap)
             self._balanceParens(location=location, char=char, matchChar=openToCloseMap[char], end=True)
 
+    @python_method
     def _balanceParens(self, location, char, matchChar, end):
         found = self._findMatchingParen(location, char, matchChar, end)
         if found is not None:
@@ -1122,15 +1148,17 @@ class CodeNSTextView(AppKit.NSTextView):
             shadow.setShadowColor_(textColor)
             shadow.setShadowBlurRadius_(3)
             balancingAttrs = {
-                            AppKit.NSBackgroundColorAttributeName: selectionColor,
-                            AppKit.NSShadowAttributeName: shadow
-                            }
+                AppKit.NSBackgroundColorAttributeName: selectionColor,
+                AppKit.NSShadowAttributeName: shadow
+            }
             self.layoutManager().setTemporaryAttributes_forCharacterRange_(balancingAttrs, (found, 1))
             self.performSelector_withObject_afterDelay_("_resetBalanceParens:", (oldAttrs, effRng), 0.2)
 
-    def _resetBalanceParens_(self, (attrs, rng)):
+    def _resetBalanceParens_(self, attrs_rng):
+        attrs, rng = attrs_rng
         self.layoutManager().setTemporaryAttributes_forCharacterRange_(attrs, rng)
 
+    @python_method
     def _filterLines(self, filterFunc):
         selectedRange = self.selectedRange()
         lines, linesRange = self._getTextForRange(selectedRange)
@@ -1145,6 +1173,7 @@ class CodeNSTextView(AppKit.NSTextView):
         newSelRng = linesRange.location, len(filteredLines)
         self.setSelectedRange_(newSelRng)
 
+    @python_method
     def _getLeftWordRange(self, newRange):
         if newRange.location == 0:
             return 0
@@ -1171,6 +1200,7 @@ class CodeNSTextView(AppKit.NSTextView):
 
         return location
 
+    @python_method
     def _getRightWordRange(self, newRange):
         text = self.string()
         lenText = len(text)
@@ -1194,11 +1224,13 @@ class CodeNSTextView(AppKit.NSTextView):
                     isChar = not isChar
         return location
 
+    @python_method
     def _getTextForRange(self, lineRange):
         string = self.string()
         lineRange = string.lineRangeForRange_(lineRange)
         return string.substringWithRange_(lineRange), lineRange
 
+    @python_method
     def _getSelectedValueForRange(self, selectedRange):
         value = None
         try:
@@ -1206,28 +1238,33 @@ class CodeNSTextView(AppKit.NSTextView):
             for c in txt:
                 if c not in "0123456789.,- ":
                     raise DrawBotError("No dragging possible")
-            exec("value = %s" % txt)
-        except:
+            value = eval(txt)
+        except Exception:
             pass
         return value
 
+    @python_method
     def _insertTextAndRun(self, txt, txtRange):
         self.insertText_(txt)
         newRange = AppKit.NSMakeRange(txtRange.location, len(txt))
         self.setSelectedRange_(newRange)
         return self._runInternalCode()
 
+    @python_method
     def _runInternalCode(self):
         pool = AppKit.NSAutoreleasePool.alloc().init()
         try:
-            window = self.window()
-            if window is not None:
-                doc = window.document()
-                if doc is not None:
-                    doc.runCode_(self)
-                    return True
-        except:
-            return False
+            try:
+                window = self.window()
+                if window is not None:
+                    doc = window.document()
+                    if doc is not None:
+                        doc.runCode_(self)
+                        return True
+            except Exception:
+                return False
+        finally:
+            del pool
 
 
 class CodeEditor(TextEditor):
@@ -1246,7 +1283,7 @@ class CodeEditor(TextEditor):
         if isinstance(codeAttr["lexer"], str):
             try:
                 codeAttr["lexer"] = get_lexer_by_name(codeAttr["lexer"])
-            except:
+            except Exception:
                 codeAttr["lexer"] = None
         if codeAttr["lexer"] is None:
             codeAttr["lexer"] = PythonLexer()

@@ -1,35 +1,16 @@
-import AppKit
+from __future__ import division, absolute_import, print_function
 
+import AppKit
 import shutil
 import os
 import tempfile
-import subprocess
-import sys
 
-
-gifsiclePath = os.path.join(os.path.dirname(__file__), "gifsicle")
-if not os.path.exists(gifsiclePath):
-    gifsiclePath = AppKit.NSBundle.mainBundle().pathForResource_ofType_("gifsicle", None)
-
-
-def _executeCommand(cmds, cwd=None):
-    gifsicleStdOut = tempfile.TemporaryFile()
-    gifsicleStdErr = tempfile.TemporaryFile()
-    try:
-        # go
-        resultCode = subprocess.call(cmds, stdout=gifsicleStdOut, stderr=gifsicleStdErr, cwd=cwd)
-        if resultCode != 0:
-            gifsicleStdOut.seek(0)
-            gifsicleStdErr.seek(0)
-            sys.stdout.write(gifsicleStdOut.read())
-            sys.stderr.write(gifsicleStdErr.read())
-            raise RuntimeError("gifsicle failed with error code %s" % resultCode)
-    finally:
-        gifsicleStdOut.close()
-        gifsicleStdErr.close()
+from drawBot.misc import executeExternalProcess, getExternalToolPath
 
 
 def generateGif(sourcePaths, destPath, delays):
+    gifsiclePath = getExternalToolPath(os.path.dirname(__file__), "gifsicle")
+    assert gifsiclePath is not None
     cmds = [
         # gifsicle path
         gifsiclePath,
@@ -56,7 +37,7 @@ def generateGif(sourcePaths, destPath, delays):
         "--output",
         destPath
     ]
-    _executeCommand(cmds)
+    executeExternalProcess(cmds)
     # remove the temp input gifs
     for inputPath in sourcePaths:
         os.remove(inputPath)
@@ -66,6 +47,7 @@ _explodedGifCache = {}
 
 
 def _explodeGif(path):
+    gifsiclePath = getExternalToolPath(os.path.dirname(__file__), "gifsicle")
     if isinstance(path, AppKit.NSURL):
         path = path.path()
     destRoot = tempfile.mkdtemp()
@@ -75,13 +57,13 @@ def _explodeGif(path):
         "--explode",
         # source path
         path
-        ]
-    _executeCommand(cmds, cwd=destRoot)
+    ]
+    executeExternalProcess(cmds, cwd=destRoot)
     files = os.listdir(destRoot)
     _explodedGifCache[path] = dict(
-            source=destRoot,
-            fileNames=files,
-        )
+        source=destRoot,
+        fileNames=files,
+    )
 
 
 def clearExplodedGifCache():

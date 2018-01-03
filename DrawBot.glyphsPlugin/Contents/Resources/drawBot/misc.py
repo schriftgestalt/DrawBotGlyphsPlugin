@@ -2,6 +2,7 @@ import AppKit
 
 import sys
 import os
+import subprocess
 
 
 # ==========
@@ -108,9 +109,9 @@ def rgb2cmyk(r, g, b):
     m = 1 - g
     y = 1 - b
     k = min(c, m, y)
-    c = min(1, max(0, c-k))
-    m = min(1, max(0, m-k))
-    y = min(1, max(0, y-k))
+    c = min(1, max(0, c - k))
+    m = min(1, max(0, m - k))
+    y = min(1, max(0, y - k))
     k = min(1, max(0, k))
     return c, m, y, k
 
@@ -260,3 +261,47 @@ class VariableController(object):
 
     def documentWindowToFront(self, sender=None):
         self.w.makeKey()
+
+
+def executeExternalProcess(cmds, cwd=None):
+    r"""
+        >>> stdout, stderr = executeExternalProcess(["which", "ls"])
+        >>> stdout
+        '/bin/ls\n'
+        >>> assert stdout == '/bin/ls\n'
+        >>> executeExternalProcess(["which", "fooooo"])
+        Traceback (most recent call last):
+            ...
+        RuntimeError: 'which' failed with error code 1
+        >>> stdout, stderr = executeExternalProcess(["python", "-S", "-c", "print('hello')"])
+        >>> stdout
+        'hello\n'
+    """
+    p = subprocess.Popen(cmds, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, universal_newlines=True)
+    stdoutdata, stderrdata = p.communicate()
+    assert p.returncode is not None
+    if p.returncode != 0:
+        sys.stdout.write(stdoutdata)
+        sys.stderr.write(stderrdata)
+        raise RuntimeError("%r failed with error code %s" % (os.path.basename(cmds[0]), p.returncode))
+    return stdoutdata, stderrdata
+
+
+def getExternalToolPath(root, toolName):
+    toolPath = os.path.join(root, toolName)
+    
+    if not os.path.exists(toolPath):
+        toolPath = AppKit.NSBundle.mainBundle().pathForResource_ofType_(toolName, None)
+        if toolPath is None or not os.path.exists(toolPath):
+            import drawBot
+            root = os.path.dirname(drawBot.__file__)
+            #toolPath = os.path.join(root, "..", "Resources", "externalTools", toolName)
+            toolPath = os.path.join(root, "..", "externalTools", toolName)
+            
+    print ("__getExternalToolPath", root, toolName, ">", toolPath)
+    return toolPath
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

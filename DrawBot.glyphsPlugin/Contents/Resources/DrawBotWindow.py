@@ -1,16 +1,30 @@
+from __future__ import absolute_import
+
+import AppKit
+from vanilla import *
+
+from drawBot.ui.codeEditor import CodeEditor, OutPutEditor
+from drawBot.ui.drawView import DrawView, ThumbnailView
+
+from drawBot.scriptTools import ScriptRunner, CallbackRunner, StdOutput
+#from drawBot.scriptTools import _Helper # for ScriptRunner
+from drawBot.drawBotDrawingTools import _drawBotDrawingTool
+from drawBot.context.drawBotContext import DrawBotContext
+from drawBot.misc import getDefault, setDefault, warnings
+
+from drawBot.ui.splitView import SplitView
+
+from objc import super
 from AppKit import NSWindowController, NSToolbarFlexibleSpaceItemIdentifier, NSToolbarSpaceItemIdentifier, NSContinuouslyUpdatesValueBindingOption, NSImage, NSString, NSShadow, NSFont, NSFontAttributeName, NSForegroundColorAttributeName, NSShadowAttributeName, NSDocumentController, NSBezierPath
 
 from Foundation import NSUserDefaults
 
-import os, sys # for ScriptRunner
-import site # for ScriptRunner
-import tempfile
-import __future__
-
 from objectsGS import CurrentFont, CurrentGlyph
 from GlyphsApp import GetSaveFile
 
-from drawBot.drawBotDrawingTools import _drawBotDrawingTool
+import sys, os
+import traceback
+
 from drawBot.context.baseContext import BezierPath
 
 sys.path.append(os.path.dirname(__file__))
@@ -44,32 +58,6 @@ class GSBezierPathDraw(BezierPath):
 
 _drawBotDrawingTool._bezierPathClass = GSBezierPathDraw
 
-# reload the module to make them everwhere available
-import drawBot
-reload(drawBot)
-
-from drawBot import *
-
-import sys
-import traceback
-
-from vanilla import *
-
-from drawBot.ui.drawView import DrawView, ThumbnailView
-
-from drawBot.drawBotDrawingTools import _drawBotDrawingTool
-from drawBot.context.drawBotContext import DrawBotContext
-
-from drawBot.misc import warnings
-from drawBot.ui.splitView import SplitView
-
-from drawBot.ui.codeEditor import CodeEditor, OutPutEditor, CodeNSTextView
-
-from drawBot.scriptTools import ScriptRunner, CallbackRunner, DrawBotNamespace, StdOutput
-from drawBot.scriptTools import _Helper # for ScriptRunner
-
-from objc import super
-
 class GlyphsDrawBotController(NSWindowController):
 
 	"""
@@ -81,7 +69,7 @@ class GlyphsDrawBotController(NSWindowController):
 	def init(self):
 		self = super(GlyphsDrawBotController, self).init()
 		document = None
-		print "GlyphsDrawBotController.init"
+		#print "GlyphsDrawBotController.init"
 		# make a window
 		self.w = Window((400, 400), "DrawBot", minSize=(200, 200), textured=False)
 		# setting previously stored frames, if any
@@ -92,10 +80,10 @@ class GlyphsDrawBotController(NSWindowController):
 		_NSWindow.setContentBorderThickness_forEdge_(27, 1)
 		try:
 			# on 10.7+ full screen support
-			self.w.getNSWindow().setCollectionBehavior_(128) #NSWindowCollectionBehaviorFullScreenPrimary
+			self.w.getNSWindow().setCollectionBehavior_(128)  # NSWindowCollectionBehaviorFullScreenPrimary
 		except:
 			pass
-			
+
 		# the code editor
 		self.codeView = CodeEditor((0, 0, -0, -0))
 		self.codeView.getNSTextView().bind_toObject_withKeyPath_options_("value", self, "document.text", {NSContinuouslyUpdatesValueBindingOption:True})
@@ -111,8 +99,6 @@ class GlyphsDrawBotController(NSWindowController):
 		self.drawView = DrawView((0, 0, -0, -0))
 		pdfView = self.drawView.getNSView()
 		view = pdfView.documentView()
-		# scrollview = view.enclosingScrollView()
-		# scrollview.setBorderType_(0)
 		# the view with all thumbnails
 		self.thumbnails = ThumbnailView((0, 0, -0, -0))
 		# connect the thumbnail view with the draw view
@@ -157,59 +143,66 @@ class GlyphsDrawBotController(NSWindowController):
 	def runCode(self, liveCoding=False):
 		# get the code
 		try:
-			code = self.document().text
-			print "__runCode 1", code
+			code = self.code()
+			#print "__runCode 1", code
 			# get the path of the document (will be None for an untitled document)
 			path = None
 			try:
 				path = self.document().fileURL().path()
 			except:
 				pass
-			print "__runCode 2", path
+			#print "__runCode 2", path
 			# reset the internal warning system
 			warnings.resetWarnings()
 			# reset the drawing tool
 			_drawBotDrawingTool.newDrawing()
 			# create a namespace
-			namespace = DrawBotNamespace(_drawBotDrawingTool, _drawBotDrawingTool._magicVariables)
+			namespace = {} # DrawBotNamespace(_drawBotDrawingTool, _drawBotDrawingTool._magicVariables)
 			# add the tool callbacks in the name space
 			_drawBotDrawingTool._addToNamespace(namespace)
 			# when enabled clear the output text view
-			#if getDefault("PyDEClearOutput", True):
-			#	self.outPutView.clear()
+			if getDefault("DrawBotClearOutput", True):
+				self.outPutView.clear()
 			# create a new std output, catching all print statements and tracebacks
 			self.output = []
-			stdout=StdOutput(self.output)
-			stderr=StdOutput(self.output, True)
+	
+			liveOutput = None
+			#if getDefault("DrawButLiveUpdateStdoutStderr", False):
+			liveOutput = self.outPutView
+			
+			self.stdout = StdOutput(self.output, outputView=liveOutput)
+			self.stderr = StdOutput(self.output, isError=True, outputView=liveOutput)
 			sys.argv = [path]
 			# warnings should show the warnings
 			warnings.shouldShowWarnings = True
 			# run the code
-			ScriptRunner(code, path, stdout, stderr, namespace=namespace)
+			ScriptRunner(code, path, namespace=namespace, stdout=self.stdout, stderr=self.stderr)
 			# warnings should stop posting them
 			warnings.shouldShowWarnings = False
 			# set context, only when the panes are visible
-			print "__set context"
+			#print "__set context"
 			if self.w.split.isPaneVisible("drawView") or self.w.split.isPaneVisible("thumbnails"):
-				print "__drawView"
+				#print "__drawView"
 				def createContext(context):
 					# draw the tool in to the context
 					_drawBotDrawingTool._drawInContext(context)
 				# create a context to draw in
 				context = DrawBotContext()
-				# savely run the callback and track all traceback back the the output
-				CallbackRunner(createContext, stdout=None, stderr=None, args=[context])
+				# savely run the callback and track all traceback back to the output
+				CallbackRunner(createContext, stdout=self.stdout, stderr=self.stderr, args=[context])
 				# get the pdf document and set in the draw view
 				pdfDocument = context.getNSPDFDocument()
+				selectionIndex = self.thumbnails.getSelection()
 				if not liveCoding or (pdfDocument and pdfDocument.pageCount()):
 					self.drawView.setPDFDocument(pdfDocument)
-				# scroll down
-				self.drawView.scrollDown()
+				# scroll to the original position
+				self.drawView.scrollToPageIndex(selectionIndex)
 			else:
-				print "__setPDF"
+				#print "__setPDF"
 				# if the panes are not visible, clear the draw view
 				self.drawView.setPDFDocument(None)
-
+			# drawing is done
+			_drawBotDrawingTool.endDrawing()
 			# set the catched print statements and tracebacks in the the output text view
 			for text, isError in self.output:
 				if liveCoding and isError:
@@ -221,8 +214,8 @@ class GlyphsDrawBotController(NSWindowController):
 			# clean up
 
 			self.output = None
-			# self.stdout = None
-			# self.stderr = None
+			self.stdout = None
+			self.stderr = None
 		except Exception, e:
 			print "-- Error", e
 			print(traceback.format_exc())
@@ -230,16 +223,16 @@ class GlyphsDrawBotController(NSWindowController):
 
 	def checkSyntax(self, sender=None):
 		# get the code
-		code = self.document().text
+		code = self.code()
 		# get te path of the document (will be None for an untitled document)
 		path = self.path()
 		# when enabled clear the output text view
-		#if getDefault("PyDEClearOutput", True):
-		self.outPutView.set("")
+		if getDefault("DrawBotClearOutput", True):
+			self.outPutView.set("")
 		# create a new std output, catching all print statements and tracebacks
 		self.output = []
-		# self.stdout = StdOutput(self.output)
-		# self.stderr = StdOutput(self.output, True)
+		self.stdout = StdOutput(self.output)
+		self.stderr = StdOutput(self.output, True)
 		# run the code, but with the optional flag checkSyntaxOnly so it will just compile the code
 		ScriptRunner(code, path, stdout=self.stdout, stderr=self.stderr, checkSyntaxOnly=True)
 		# set the catched print statements and tracebacks in the the output text view
@@ -247,26 +240,37 @@ class GlyphsDrawBotController(NSWindowController):
 			self.outPutView.append(text, isError)
 		# clean up
 		self.output = None
-		# self.stdout = None
-		# self.stderr = None
+		self.stdout = None
+		self.stderr = None
 
 	def _savePDF(self, path):
-		print "__savePDF path", path
+		#print "__savePDF path", path
 		# get the pdf date from the draw view
 		data = self.drawView.get()
 		if data:
 			# if there is date save it
-			data.writeToFile_atomically_(path , False)
+			data.writeToFile_atomically_(path, False)
 
 	def savePDF(self, sender=None):
 		"""
 		Save the content as a pdf.
 		"""
 		# pop up a show put file sheet
+		self.showPutFile(["pdf"], callback=self._savePDF)
 		
-		fileName = GetSaveFile(filetypes=["pdf"])
-		self._savePDF(fileName)
-	
+	def code(self):
+		"""
+		Returns the content of the code view as a string.
+		"""
+		return self.document().text
+
+	def setCode(self, code):
+		"""
+		Sets code in to the code view.
+		"""
+		assert(False)
+		self.document().setText_(code)
+
 	def pdfData(self):
 		"""
 		Returns the pdf data from the draw view
@@ -303,5 +307,5 @@ class GlyphsDrawBotController(NSWindowController):
 		self.codeView.reload()
 	
 	def exportFont_(self, sender):
-		print "__self.savePDF()"
+		#print "__self.savePDF()"
 		self.savePDF()
