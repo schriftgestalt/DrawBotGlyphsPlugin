@@ -1302,13 +1302,15 @@ class CodeEditor(TextEditor):
 
         if codeAttr["showlineNumbers"] is None:
             codeAttr["showlineNumbers"] = True
-        ruler = NSLineNumberRuler.alloc().init()
-        ruler.setClientView_(self.getNSTextView())
-        ruler.setRulerBackgroundColor_(AppKit.NSColor.colorWithCalibratedWhite_alpha_(.95, 1))
-        self.getNSScrollView().setVerticalRulerView_(ruler)
-        self.getNSScrollView().setHasHorizontalRuler_(False)
-        self.getNSScrollView().setHasVerticalRuler_(codeAttr["showlineNumbers"])
-        self.getNSScrollView().setRulersVisible_(True)
+        scollView = self.getNSScrollView()
+        ruler = NSLineNumberRuler.alloc().initWithScrollView_(scollView)
+        #ruler.setClientView_(self.getNSTextView())
+        print ":::ruler:", ruler
+        #ruler.setRulerBackgroundColor_(AppKit.NSColor.colorWithCalibratedWhite_alpha_(.95, 1))
+        scollView.setVerticalRulerView_(ruler)
+        scollView.setHasHorizontalRuler_(False)
+        scollView.setHasVerticalRuler_(codeAttr["showlineNumbers"])
+        scollView.setRulersVisible_(True)
 
     def setHighlightStyle(self, style):
         self.getNSTextView().setHighlightStyle_(style)

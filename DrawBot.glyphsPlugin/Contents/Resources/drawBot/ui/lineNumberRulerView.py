@@ -1,3 +1,7 @@
+import objc
+NSLineNumberRuler = objc.lookUpClass("GSLineNumberView")
+
+'''
 from Foundation import NSInvocation, NSString, NSMaxRange, NSMakeRange, NSLocationInRange, NSMinY, NSWidth, NSHeight, NSMakeRect
 from AppKit import NSRulerView, NSFont, NSColor, NSTextView, NSNotificationCenter, NSColor, NSBezierPath, NSRectFill, NSMiniControlSize, NSFontAttributeName, NSForegroundColorAttributeName, NSTextStorageDidProcessEditingNotification
 import math
@@ -207,3 +211,4 @@ class NSLineNumberRuler(NSRulerView):
         path.lineToPoint_((bounds.origin.x + bounds.size.width, bounds.origin.y + bounds.size.height))
         NSColor.grayColor().set()
         path.stroke()
+'''
