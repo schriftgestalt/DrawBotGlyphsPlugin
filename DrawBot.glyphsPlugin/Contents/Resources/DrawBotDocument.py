@@ -2,19 +2,13 @@
 # encoding: utf-8
 
 import objc
-from Foundation import *
-from AppKit import *
 import sys, os, re
 from objc import super
 
 from DrawBotWindow import GlyphsDrawBotController
 
-MainBundle = NSBundle.mainBundle()
-path = MainBundle.bundlePath() + "/Contents/Scripts"
-if not path in sys.path:
-	sys.path.append(path)
-
-import GlyphsApp
+from Foundation import NSLog, NSString, NSUTF8StringEncoding
+from AppKit import NSApplication, NSDocumentController, NSDocument, NSMenuItem
 
 GlyphsPluginProtocol = objc.protocolNamed("GlyphsPlugin")
 

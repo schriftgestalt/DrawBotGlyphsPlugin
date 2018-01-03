@@ -1,4 +1,4 @@
-from AppKit import *
+from AppKit import NSSplitView, NSColor, NSBezierPath, NSSplitViewDividerStyleThick, NSSplitViewDividerStyleThin
 
 from vanilla import *
 from vanilla.vanillaBase import VanillaBaseObject
