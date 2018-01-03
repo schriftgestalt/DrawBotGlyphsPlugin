@@ -5,8 +5,6 @@ import objc
 import sys, os, re
 from objc import super
 
-from DrawBotWindow import GlyphsDrawBotController
-
 from Foundation import NSLog, NSString, NSUTF8StringEncoding
 from AppKit import NSApplication, NSDocumentController, NSDocument, NSMenuItem
 
@@ -31,6 +29,7 @@ class DrawBotDocument (NSDocument, GlyphsPluginProtocol):
 		mainMenu.itemAtIndex_(1).submenu().insertItem_atIndex_(newMenuItem, 1)
 	
 	def makeWindowControllers(self):
+		from DrawBotWindow import GlyphsDrawBotController
 		WindowController = GlyphsDrawBotController.alloc().init()
 		self.addWindowController_(WindowController)
 		
