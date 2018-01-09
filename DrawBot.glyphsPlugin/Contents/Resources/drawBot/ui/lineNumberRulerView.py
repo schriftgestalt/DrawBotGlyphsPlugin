@@ -1,11 +1,15 @@
 import objc
-NSLineNumberRuler = objc.lookUpClass("GSLineNumberView")
+LineNumberNSRulerView = objc.lookUpClass("GSLineNumberView")
 
 '''
-from Foundation import NSInvocation, NSString, NSMaxRange, NSMakeRange, NSLocationInRange, NSMinY, NSWidth, NSHeight, NSMakeRect
-from AppKit import NSRulerView, NSFont, NSColor, NSTextView, NSNotificationCenter, NSColor, NSBezierPath, NSRectFill, NSMiniControlSize, NSFontAttributeName, NSForegroundColorAttributeName, NSTextStorageDidProcessEditingNotification
+
+from Foundation import NSInvocation, NSString, NSMakeRange, NSMaxRange, NSLocationInRange, NSNotFound, NSMakeRect, NSMinY, NSWidth, NSHeight
+from AppKit import NSRulerView, NSMiniControlSize, NSTextView, NSNotificationCenter, \
+    NSFontAttributeName, NSForegroundColorAttributeName, NSTextStorageDidProcessEditingNotification, \
+    NSFont, NSColor, NSBezierPath, NSRectFill
 import math
 from objc import super
+
 
 """
 Based/translated from NoodleLineNumberView
@@ -13,13 +17,13 @@ http://www.noodlesoft.com/blog/2008/10/05/displaying-line-numbers-with-nstextvie
 """
 
 
-class NSLineNumberRuler(NSRulerView):
+class LineNumberNSRulerView(NSRulerView):
 
     DEFAULT_THICKNESS = 22.
     RULER_MARGIN = 5.
 
     def init(self):
-        self = super(NSLineNumberRuler, self).init()
+        self = super(LineNumberNSRulerView, self).init()
         self._font = NSFont.labelFontOfSize_(NSFont.systemFontSizeForControlSize_(NSMiniControlSize))
         self._textColor = NSColor.colorWithCalibratedWhite_alpha_(.42, 1)
         self._rulerBackgroundColor = None
@@ -59,7 +63,7 @@ class NSLineNumberRuler(NSRulerView):
         if oldClientView != view and isinstance(oldClientView, NSTextView):
             NSNotificationCenter.defaultCenter().removeObserver_name_object_(self, NSTextStorageDidProcessEditingNotification, oldClientView.textStorage())
 
-        super(NSLineNumberRuler, self).setClientView_(view)
+        super(LineNumberNSRulerView, self).setClientView_(view)
 
         if view is not None and isinstance(view, NSTextView):
             NSNotificationCenter.defaultCenter().addObserver_selector_name_object_(self, "textDidChange:",
@@ -84,7 +88,7 @@ class NSLineNumberRuler(NSRulerView):
         view = self.clientView()
         if view is not None:
             NSNotificationCenter.defaultCenter().removeObserver_name_object_(self, NSTextStorageDidProcessEditingNotification, view.textStorage())
-        super(NSLineNumberRuler, self).dealloc()
+        super(LineNumberNSRulerView, self).dealloc()
 
     def calculateLines(self):
         view = self.clientView()
@@ -117,7 +121,7 @@ class NSLineNumberRuler(NSRulerView):
         oldThickness = self.ruleThickness()
         newThickness = self.requiredThickness()
 
-        if abs(oldThickness - newThickness) > 1:
+        if abs(oldThickness - newThickness) > 0:
             invocation = NSInvocation.invocationWithMethodSignature_(self.methodSignatureForSelector_("setRuleThickness:"))
             invocation.setSelector_("setRuleThickness:")
             invocation.setTarget_(self)

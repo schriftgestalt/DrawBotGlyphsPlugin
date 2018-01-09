@@ -4,7 +4,6 @@ import AppKit
 from objc import super
 
 from keyword import kwlist
-from objc import super
 import re
 import sys
 
@@ -23,7 +22,7 @@ from vanilla import *
 from vanilla.py23 import python_method
 from fontTools.misc.py23 import PY3, unichr
 
-from .lineNumberRulerView import NSLineNumberRuler
+from .lineNumberRulerView import LineNumberNSRulerView
 from drawBot.misc import getDefault, getFontDefault, getColorDefault, DrawBotError
 from drawBot.drawBotDrawingTools import _drawBotDrawingTool
 
@@ -1303,10 +1302,9 @@ class CodeEditor(TextEditor):
         if codeAttr["showlineNumbers"] is None:
             codeAttr["showlineNumbers"] = True
         scollView = self.getNSScrollView()
-        ruler = NSLineNumberRuler.alloc().initWithScrollView_(scollView)
-        #ruler.setClientView_(self.getNSTextView())
-        print ":::ruler:", ruler
-        #ruler.setRulerBackgroundColor_(AppKit.NSColor.colorWithCalibratedWhite_alpha_(.95, 1))
+        # changed for Glyphs version
+        ruler = LineNumberNSRulerView.alloc().initWithScrollView_(scollView)
+        # end change
         scollView.setVerticalRulerView_(ruler)
         scollView.setHasHorizontalRuler_(False)
         scollView.setHasVerticalRuler_(codeAttr["showlineNumbers"])

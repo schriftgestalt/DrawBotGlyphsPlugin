@@ -15,7 +15,7 @@ from .context.dummyContext import DummyContext
 from .context.tools.imageObject import ImageObject
 from .context.tools import gifTools
 
-from .misc import DrawBotError, warnings, VariableController, optimizePath, isPDF, isEPS, isGIF
+from .misc import DrawBotError, warnings, VariableController, optimizePath, isPDF, isEPS, isGIF, transformationAtCenter
 
 from fontTools.misc.py23 import basestring, PY2
 
@@ -477,7 +477,9 @@ class DrawBotDrawingTool(object):
 
     def save(self):
         """
-        Save the current state.
+        Obsolete: use `savedState()` in a `with` statement instead.
+
+        Save the current graphics state.
         This will save the state of the canvas (with all the transformations)
         but also the state of the colors, strokes...
         """
@@ -487,7 +489,9 @@ class DrawBotDrawingTool(object):
 
     def restore(self):
         """
-        Restore from a previously saved state.
+        Obsolete: use `savedState()` in a `with` statement instead.
+
+        Restore from a previously saved graphics state.
         This will restore the state of the canvas (with all the transformations)
         but also the state of colors, strokes...
         """
@@ -501,8 +505,10 @@ class DrawBotDrawingTool(object):
 
         .. downloadcode:: savedState.py
 
-            # use with statement
-            # this will be wrapped around a `save` and `restore`
+            # Use the 'with' statement.
+            # This makes any changes you make to the graphics state -- such as
+            # colors and transformations -- temporary, and will be reset to
+            # the previous state at the end of the 'with' block.
             with savedState():
                 # set a color
                 fill(1, 0, 0)
@@ -635,8 +641,11 @@ class DrawBotDrawingTool(object):
 
     def clipPath(self, path=None):
         """
-        Use the current path as a clipping path.
-        The clipping path will be used until the canvas gets a `restore()`.
+        Use the given path as a clipping path, or the current path if no path was given.
+
+        Everything drawn after a `clipPath()` call will be clipped by the clipping path.
+        To "undo" the clipping later, make sure you do the clipping inside a
+        `with savedState():` block, as shown in the example.
 
         .. downloadcode:: clipPath.py
 
@@ -650,14 +659,14 @@ class DrawBotDrawingTool(object):
             path.lineTo((900, 900))
             # close the path
             path.closePath()
-            # save the current graphics state
-            save()
-            # set the path as a clipping path
-            clipPath(path)
-            # the oval will be clipped inside the path
-            oval(100, 100, 800, 800)
-            # restore: this will remove the clip path
-            restore()
+            # save the graphics state so the clipping happens only
+            # temporarily
+            with savedState():
+                # set the path as a clipping path
+                clipPath(path)
+                # the oval will be clipped inside the path
+                oval(100, 100, 800, 800)
+            # no more clipping here
         """
         self._requiresNewFirstPage = True
         self._addInstruction("clipPath", path)
@@ -1219,11 +1228,13 @@ class DrawBotDrawingTool(object):
 
     # transform
 
-    def transform(self, matrix):
+    def transform(self, matrix, center=(0, 0)):
         """
         Transform the canvas with a transformation matrix.
         """
         self._requiresNewFirstPage = True
+        if center != (0, 0):
+            matrix = transformationAtCenter(matrix, center)
         self._addInstruction("transform", matrix)
 
     def translate(self, x=0, y=0):
@@ -1232,34 +1243,38 @@ class DrawBotDrawingTool(object):
         """
         self.transform((1, 0, 0, 1, x, y))
 
-    def rotate(self, angle):
+    def rotate(self, angle, center=(0, 0)):
         """
-        Rotate the canvas around the origin point with a given angle in degrees.
+        Rotate the canvas around the `center` point (which is the origin by default) with a given angle in degrees.
         """
         angle = math.radians(angle)
         c = math.cos(angle)
         s = math.sin(angle)
-        self.transform((c, s, -s, c, 0, 0))
+        self.transform((c, s, -s, c, 0, 0), center)
 
-    def scale(self, x=1, y=None):
+    def scale(self, x=1, y=None, center=(0, 0)):
         """
         Scale the canvas with a given `x` (horizontal scale) and `y` (vertical scale).
 
         If only 1 argument is provided a proportional scale is applied.
+
+        The center of scaling can optionally be set via the `center` keyword argument. By default this is the origin.
         """
         if y is None:
             y = x
-        self.transform((x, 0, 0, y, 0, 0))
+        self.transform((x, 0, 0, y, 0, 0), center)
 
-    def skew(self, angle1, angle2=0):
+    def skew(self, angle1, angle2=0, center=(0, 0)):
         """
         Skew the canvas with given `angle1` and `angle2`.
 
         If only one argument is provided a proportional skew is applied.
+
+        The center of skewing can optionally be set via the `center` keyword argument. By default this is the origin.
         """
         angle1 = math.radians(angle1)
         angle2 = math.radians(angle2)
-        self.transform((1, math.tan(angle2), math.tan(angle1), 1, 0, 0))
+        self.transform((1, math.tan(angle2), math.tan(angle1), 1, 0, 0), center)
 
     # text
 

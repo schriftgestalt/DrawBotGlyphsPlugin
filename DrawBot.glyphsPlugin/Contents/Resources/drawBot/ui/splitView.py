@@ -1,8 +1,10 @@
-from AppKit import NSSplitView, NSColor, NSBezierPath, NSSplitViewDividerStyleThick, NSSplitViewDividerStyleThin
+from AppKit import NSSplitView, NSColor, NSBezierPath, \
+    NSSplitViewDividerStyleThick, NSSplitViewDividerStyleThin
+from objc import super
 
 from vanilla import *
 from vanilla.vanillaBase import VanillaBaseObject
-from objc import super
+
 
 class SimpleNSSplitView(NSSplitView):
 

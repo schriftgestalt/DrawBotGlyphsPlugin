@@ -17,7 +17,6 @@ from .imageContext import _makeBitmapImageRep
 
 from drawBot.misc import warnings, formatNumber
 
-from objc import super
 
 class _UniqueIDGenerator(object):
 

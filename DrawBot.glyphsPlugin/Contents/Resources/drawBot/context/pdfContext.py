@@ -11,7 +11,6 @@ from .tools import gifTools
 from .baseContext import BaseContext
 from drawBot.misc import DrawBotError, isPDF, isGIF
 
-from objc import super
 
 osVersionCurrent = StrictVersion(platform.mac_ver()[0])
 osVersion10_11 = StrictVersion("10.11")
