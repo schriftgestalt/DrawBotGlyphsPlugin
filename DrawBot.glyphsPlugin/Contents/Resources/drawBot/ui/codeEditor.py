@@ -35,9 +35,11 @@ fallbackTextColor = AppKit.NSColor.blackColor()
 fallbackBackgroundColor = AppKit.NSColor.whiteColor()
 fallbackHightLightColor = AppKit.NSColor.selectedTextBackgroundColor()
 
-fallbackFont = AppKit.NSFont.fontWithName_size_("Menlo", 10)
+fontSize = getDefault("DrawbotCodeEditorFontSize", 11)
+
+fallbackFont = AppKit.NSFont.fontWithName_size_("Menlo", fontSize)
 if not fallbackFont:
-    fallbackFont = AppKit.NSFont.fontWithName_size_("Monaco", 10)
+    fallbackFont = AppKit.NSFont.fontWithName_size_("Monaco", fontSize)
 
 basicLineHeightMultiple = 1.2
 basicParagraph = AppKit.NSMutableParagraphStyle.alloc().init()
