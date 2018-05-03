@@ -14,8 +14,9 @@ from .context.dummyContext import DummyContext
 
 from .context.tools.imageObject import ImageObject
 from .context.tools import gifTools
+from .context.tools import openType
 
-from .misc import DrawBotError, warnings, VariableController, optimizePath, isPDF, isEPS, isGIF, transformationAtCenter
+from .misc import DrawBotError, warnings, VariableController, optimizePath, isPDF, isEPS, isGIF, transformationAtCenter, clearMemoizeCache
 
 from fontTools.misc.py23 import basestring, PY2
 
@@ -27,9 +28,6 @@ def _getmodulecontents(module, names=None):
     for name in names:
         d[name] = getattr(module, name)
     return d
-
-
-_chachedPixelColorBitmaps = {}
 
 
 _paperSizes = {
@@ -140,6 +138,8 @@ class DrawBotDrawingTool(object):
             self._hasPage = False
             if not hasattr(self, "_tempInstalledFonts"):
                 self._tempInstalledFonts = dict()
+        self._cachedPixelColorBitmaps = {}
+        clearMemoizeCache()
 
     def _copy(self):
         new = self.__class__()
@@ -1503,8 +1503,9 @@ class DrawBotDrawingTool(object):
             # draw the same string
             text("aabcde1234567890", (100, 100))
         """
-        self._dummyContext.openTypeFeatures(*args, **features)
+        result = self._dummyContext.openTypeFeatures(*args, **features)
         self._addInstruction("openTypeFeatures", *args, **features)
+        return result
 
     def listOpenTypeFeatures(self, fontName=None):
         """
@@ -1537,8 +1538,9 @@ class DrawBotDrawingTool(object):
             # draw text!!
             text("Hello Q", (100, 300))
         """
-        self._dummyContext.fontVariations(*args, **axes)
+        result = self._dummyContext.fontVariations(*args, **axes)
         self._addInstruction("fontVariations", *args, **axes)
+        return result
 
     def listFontVariations(self, fontName=None):
         """
@@ -1944,7 +1946,7 @@ class DrawBotDrawingTool(object):
         x, y = xy
         if isinstance(path, basestring):
             path = optimizePath(path)
-        bitmap = _chachedPixelColorBitmaps.get(path)
+        bitmap = self._cachedPixelColorBitmaps.get(path)
         if bitmap is None:
             if isinstance(path, self._imageClass):
                 source = path._nsImage()
@@ -1958,7 +1960,7 @@ class DrawBotDrawingTool(object):
                 source = AppKit.NSImage.alloc().initByReferencingURL_(url)
 
             bitmap = AppKit.NSBitmapImageRep.imageRepWithData_(source.TIFFRepresentation())
-            _chachedPixelColorBitmaps[path] = bitmap
+            self._cachedPixelColorBitmaps[path] = bitmap
 
         color = bitmap.colorAtX_y_(x, bitmap.pixelsHigh() - y - 1)
         if color is None:
@@ -1967,6 +1969,9 @@ class DrawBotDrawingTool(object):
         return color.redComponent(), color.greenComponent(), color.blueComponent(), color.alphaComponent()
 
     def numberOfPages(self, path):
+        """
+        Return the number of pages for a given pdf or (animated) gif.
+        """
         path = optimizePath(path)
         if path.startswith("http"):
             url = AppKit.NSURL.URLWithString_(path)
@@ -2126,6 +2131,8 @@ class DrawBotDrawingTool(object):
 
         psName = self._dummyContext._fontNameForPath(path)
         self._tempInstalledFonts[path] = psName
+        # also clear cached memoized functions
+        clearMemoizeCache()
 
         if not success:
             warnings.warn("install font: %s" % error)

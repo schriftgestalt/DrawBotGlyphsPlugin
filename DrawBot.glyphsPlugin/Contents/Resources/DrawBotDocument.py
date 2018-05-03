@@ -10,6 +10,25 @@ from AppKit import NSApplication, NSDocumentController, NSDocument, NSMenuItem
 
 GlyphsPluginProtocol = objc.protocolNamed("GlyphsPlugin")
 
+
+def yynew():
+	newDoc = DrawBotDocument.alloc().init()
+	NSDocumentController.sharedDocumentController().addDocument_(newDoc)
+	newDoc.makeWindowControllers()
+	newDoc.showWindows()
+
+def xxnewDocument():
+	import cProfile, pstats, StringIO
+	pr = cProfile.Profile()
+	pr.enable()
+	yynew()
+	pr.disable()
+	s = StringIO.StringIO()
+	sortby = 'cumulative'
+	ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+	ps.print_stats()
+	print s.getvalue()
+
 class DrawBotDocument (NSDocument, GlyphsPluginProtocol):
 	
 	def init(self):
@@ -23,7 +42,7 @@ class DrawBotDocument (NSDocument, GlyphsPluginProtocol):
 	
 	def loadPlugin(self):
 		mainMenu = NSApplication.sharedApplication().mainMenu()
-		s = objc.selector(self.newDocument,signature='v@:')
+		s = objc.selector(self.newDocument, signature='v@:')
 		newMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("New Drawbot", s, "")
 		newMenuItem.setTarget_(self)
 		mainMenu.itemAtIndex_(1).submenu().insertItem_atIndex_(newMenuItem, 1)
@@ -34,11 +53,7 @@ class DrawBotDocument (NSDocument, GlyphsPluginProtocol):
 		self.addWindowController_(WindowController)
 		
 	def newDocument(self):
-		newDoc = DrawBotDocument.alloc().init()
-		
-		NSDocumentController.sharedDocumentController().addDocument_(newDoc)
-		newDoc.makeWindowControllers()
-		newDoc.showWindows()
+		xxnewDocument()
 	
 	def windowController(self):
 		return self.windowControllers()[0]

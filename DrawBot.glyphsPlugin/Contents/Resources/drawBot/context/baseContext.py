@@ -94,7 +94,7 @@ class BezierPath(BasePen):
 
     def __init__(self, path=None, glyphSet=None):
         if path is None:
-            self._path = AppKit.NSBezierPath.bezierPath()
+            self._path = AppKit.NSBezierPath.alloc().init()
         else:
             self._path = path
         BasePen.__init__(self, glyphSet)
@@ -362,7 +362,7 @@ class BezierPath(BasePen):
     def optimizePath(self):
         count = self._path.elementCount()
         if self._path.elementAtIndex_(count - 1) == AppKit.NSMoveToBezierPathElement:
-            optimizedPath = AppKit.NSBezierPath.bezierPath()
+            optimizedPath = AppKit.NSBezierPath.alloc().init()
             for i in range(count - 1):
                 instruction, points = self._path.elementAtIndex_associatedPoints_(i)
                 if instruction == AppKit.NSMoveToBezierPathElement:
@@ -452,7 +452,7 @@ class BezierPath(BasePen):
         """
         if center != (0, 0):
             transformMatrix = transformationAtCenter(transformMatrix, center)
-        aT = AppKit.NSAffineTransform.transform()
+        aT = AppKit.NSAffineTransform.alloc().init()
         aT.setTransformStruct_(transformMatrix[:])
         self._path.transformUsingAffineTransform_(aT)
 
@@ -1252,7 +1252,9 @@ class FormattedString(object):
 
     def openTypeFeatures(self, *args, **features):
         """
-        Enable OpenType features.
+        Enable OpenType features and return the current openType features settings.
+
+        If no arguments are given `openTypeFeatures()` will just return the current openType features settings.
 
         .. downloadcode:: openTypeFeaturesFormattedString.py
 
@@ -1272,10 +1274,22 @@ class FormattedString(object):
             # draw the formatted string
             text(t, (10, 80))
         """
-        if args and args[0] is None:
+        if args and features:
+            raise DrawBotError("Can't combine positional arguments and keyword arguments")
+        if args:
+            if len(args) != 1:
+                raise DrawBotError("There can only be one positional argument")
+            if args[0] is not None:
+                raise DrawBotError("First positional argument can only be None")
+            warnings.warn("openTypeFeatures(None) is deprecated, use openTypeFeatures(resetFeatures=True) instead.")
             self._openTypeFeatures.clear()
         else:
+            if features.pop("resetFeatures", False):
+                self._openTypeFeatures.clear()
             self._openTypeFeatures.update(features)
+        currentFeatures = self.listOpenTypeFeatures()
+        currentFeatures.update(self._openTypeFeatures)
+        return currentFeatures
 
     def listOpenTypeFeatures(self, fontName=None):
         """
@@ -1291,12 +1305,27 @@ class FormattedString(object):
 
     def fontVariations(self, *args, **axes):
         """
-        Pick a variation by axes values.
+        Pick a variation by axes values and return the current font variations settings.
+
+        If no arguments are given `fontVariations()` will just return the current font variations settings.
         """
-        if args and args[0] is None:
+        if args and axes:
+            raise DrawBotError("Can't combine positional arguments and keyword arguments")
+        if args:
+            if len(args) != 1:
+                raise DrawBotError("There can only be one positional argument")
+            if args[0] is not None:
+                raise DrawBotError("First positional argument can only be None")
+            warnings.warn("fontVariations(None) is deprecated, use fontVariations(resetVariations=True) instead.")
             self._fontVariations.clear()
         else:
+            if axes.pop("resetVariations", False):
+                self._fontVariations.clear()
             self._fontVariations.update(axes)
+        defaultVariations = self.listFontVariations()
+        currentVariation = {axis: data["defaultValue"] for axis, data in defaultVariations.items()}
+        currentVariation.update(self._fontVariations)
+        return currentVariation
 
     def listFontVariations(self, fontName=None):
         """
@@ -2063,10 +2092,10 @@ class BaseContext(object):
         self._state.text.language(language)
 
     def openTypeFeatures(self, *args, **features):
-        self._state.text.openTypeFeatures(*args, **features)
+        return self._state.text.openTypeFeatures(*args, **features)
 
     def fontVariations(self, *args, **axes):
-        self._state.text.fontVariations(*args, **axes)
+        return self._state.text.fontVariations(*args, **axes)
 
     def attributedString(self, txt, align=None):
         if isinstance(txt, FormattedString):

@@ -17,7 +17,7 @@ import threading
 from distutils.version import StrictVersion
 import platform
 from fontTools.misc.py23 import PY2, PY3
-from drawBot.misc import getDefault
+from drawBot.misc import getDefault #, warnings ?? there is a conflict with `import warnings` in line 12
 from objc import super
 
 osVersionCurrent = StrictVersion(platform.mac_ver()[0])
@@ -34,9 +34,7 @@ def retrieveCheckEventQueueForUserCancelFromCarbon():
     if _carbonPath is not None:
         CheckEventQueueForUserCancel = ctypes.CFUNCTYPE(ctypes.c_bool)(('CheckEventQueueForUserCancel', ctypes.CDLL(_carbonPath)))
     else:
-        from drawBot.misc import warnings
         warnings.warn("Carbon.framework can't be found; command-period script cancelling will not work.")
-
 
 # Acquire this lock if something must not be interrupted by command-period or escape
 cancelLock = threading.Lock()

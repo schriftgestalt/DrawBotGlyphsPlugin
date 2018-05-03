@@ -1,5 +1,7 @@
 import CoreText
 
+from drawBot.misc import memoize
+
 # https://developer.apple.com/fonts/TrueType-Reference-Manual/RM09/AppendixF.html
 # https://github.com/behdad/harfbuzz/blob/master/src/hb-coretext.cc#L381
 
@@ -486,22 +488,22 @@ def getFeatureTagsForFontAttributes(attributes):
 
 
 def getFeatureTagsForDescriptions(featureDescriptions):
-    featureTags = list()
+    featureTags = dict()
     for featureDescription in featureDescriptions:
         featureType = featureDescription[CoreText.NSFontFeatureTypeIdentifierKey]
         for selector in featureDescription["CTFeatureTypeSelectors"]:
             featureSelector = selector[CoreText.NSFontFeatureSelectorIdentifierKey]
             featureTag = reversedFeatureMap.get((featureType, featureSelector))
             if featureTag:
-                featureTag = featureTag.replace("_off", "")
-                if featureTag not in featureTags:
-                    featureTags.append(featureTag)
+                featureKey = featureTag.replace("_off", "")
+                featureTags[featureKey] = selector.get(CoreText.kCTFontFeatureSelectorDefaultKey, False)
     return featureTags
 
 
+@memoize
 def getFeatureTagsForFontName(fontName):
     descriptor = CoreText.NSFontDescriptor.fontDescriptorWithName_size_(fontName, 12)
     featureDescriptions = CoreText.CTFontDescriptorCopyAttribute(descriptor, CoreText.kCTFontFeaturesAttribute)
     if featureDescriptions is None:
-        return []
+        return dict()
     return getFeatureTagsForDescriptions(featureDescriptions)

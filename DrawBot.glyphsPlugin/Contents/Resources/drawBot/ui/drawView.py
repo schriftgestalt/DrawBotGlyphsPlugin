@@ -1,7 +1,7 @@
 from Foundation import NSURL
 from AppKit import NSDragOperationNone, NSBezelBorder
 from Quartz import PDFView, PDFThumbnailView, PDFDocument
-
+import traceback
 from vanilla import Group
 
 epsPasteBoardType = "CorePasteboardFlavorType 0x41494342"
@@ -54,6 +54,10 @@ class DrawView(Group):
         super(DrawView, self).__init__(posSize)
         pdfView = self.getNSView()
         pdfView.setAutoScales_(True)
+        view = pdfView.documentView()
+        if view is not None:
+            scrollview = view.enclosingScrollView()
+            scrollview.setBorderType_(NSBezelBorder)
 
     def get(self):
         pdf = self.getNSView().document()
