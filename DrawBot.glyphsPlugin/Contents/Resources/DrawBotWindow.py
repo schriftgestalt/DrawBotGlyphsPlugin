@@ -2,6 +2,7 @@
 
 import AppKit
 from vanilla import *
+import vanilla.dialogs
 
 from drawBot.ui.codeEditor import CodeEditor, OutPutEditor
 from drawBot.ui.drawView import DrawView, ThumbnailView
@@ -256,7 +257,7 @@ class GlyphsDrawBotController(NSWindowController):
 		Save the content as a pdf.
 		"""
 		# pop up a show put file sheet
-		self.showPutFile(["pdf"], callback=self._savePDF)
+		vanilla.dialogs.putFile(fileTypes=["pdf"], parentWindow=self.window(), resultCallback=self._savePDF)
 		
 	def code(self):
 		"""
