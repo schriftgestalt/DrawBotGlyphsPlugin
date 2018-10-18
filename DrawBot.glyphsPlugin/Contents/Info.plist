@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>BNDL</string>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>3</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.0.2</string>
+	<string>0.0.3</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -42,7 +42,7 @@
 	<key>productPageURL</key>
 	<string>https://github.com/schriftgestalt/DrawBotGlyphsPlugin</string>
 	<key>productReleaseNotes</key>
-	<string>____LatestReleaseNotes____</string>
+	<string>Fix export crash</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright, Georg Seifert, 2018</string>
 	<key>NSPrincipalClass</key>
