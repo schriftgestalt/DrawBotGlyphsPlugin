@@ -11,26 +11,6 @@ from AppKit import NSApplication, NSDocumentController, NSDocument, NSMenuItem
 GlyphsPluginProtocol = objc.protocolNamed("GlyphsPlugin")
 
 
-def yynew():
-	newDoc = DrawBotDocument.alloc().init()
-	NSDocumentController.sharedDocumentController().addDocument_(newDoc)
-	newDoc.makeWindowControllers()
-	newDoc.showWindows()
-
-def xxnewDocument():
-	import cProfile, pstats, StringIO
-	pr = cProfile.Profile()
-	pr.enable()
-	yynew()
-	pr.disable()
-	s = StringIO.StringIO()
-	sortby = 'cumulative'
-	ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-	ps.print_stats()
-	print s.getvalue()
-
-class DrawBotDocument (NSDocument, GlyphsPluginProtocol):
-	
 	def init(self):
 		"""
 		You can add an observer like in the example.
@@ -53,7 +33,10 @@ class DrawBotDocument (NSDocument, GlyphsPluginProtocol):
 		self.addWindowController_(WindowController)
 		
 	def newDocument(self):
-		xxnewDocument()
+		newDoc = DrawBotDocument.alloc().init()
+		NSDocumentController.sharedDocumentController().addDocument_(newDoc)
+		newDoc.makeWindowControllers()
+		newDoc.showWindows()
 	
 	def windowController(self):
 		return self.windowControllers()[0]
@@ -72,19 +55,8 @@ class DrawBotDocument (NSDocument, GlyphsPluginProtocol):
 		Distinguishes the API version the plugin was built for. 
 		Return 1.
 		"""
-		try:
-			return 1
-		except Exception as e:
-			self.logToConsole("interfaceVersion: %s" % str(e))
-	
-	def logToConsole(self, message):
-		"""
-		The variable 'message' will be passed to Console.app.
-		Use self.logToConsole("bla bla") for debugging.
-		"""
-		myLog = "%s:\n%s" % (self.__class__.__name__, message)
-		NSLog(myLog)
-	
+		return 1
+
 	def dataRepresentationOfType_(self, aType):
 		if len(self.text) > 0:
 			return NSString.stringWithString_(self.text).dataUsingEncoding_(NSUTF8StringEncoding)

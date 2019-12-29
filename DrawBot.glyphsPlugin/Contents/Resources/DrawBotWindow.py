@@ -145,14 +145,12 @@ class GlyphsDrawBotController(NSWindowController):
 		# get the code
 		try:
 			code = self.code()
-			#print "__runCode 1", code
 			# get the path of the document (will be None for an untitled document)
 			path = None
 			try:
 				path = self.document().fileURL().path()
 			except:
 				pass
-			#print "__runCode 2", path
 			# reset the internal warning system
 			warnings.resetWarnings()
 			# reset the drawing tool
@@ -181,9 +179,7 @@ class GlyphsDrawBotController(NSWindowController):
 			# warnings should stop posting them
 			warnings.shouldShowWarnings = False
 			# set context, only when the panes are visible
-			#print "__set context"
 			if self.w.split.isPaneVisible("drawView") or self.w.split.isPaneVisible("thumbnails"):
-				#print "__drawView"
 				def createContext(context):
 					# draw the tool in to the context
 					_drawBotDrawingTool._drawInContext(context)
@@ -199,7 +195,6 @@ class GlyphsDrawBotController(NSWindowController):
 				# scroll to the original position
 				self.drawView.scrollToPageIndex(selectionIndex)
 			else:
-				#print "__setPDF"
 				# if the panes are not visible, clear the draw view
 				self.drawView.setPDFDocument(None)
 			# drawing is done
@@ -245,7 +240,6 @@ class GlyphsDrawBotController(NSWindowController):
 		self.stderr = None
 
 	def _savePDF(self, path):
-		#print "__savePDF path", path
 		# get the pdf date from the draw view
 		data = self.drawView.get()
 		if data:
@@ -308,5 +302,4 @@ class GlyphsDrawBotController(NSWindowController):
 		self.codeView.reload()
 	
 	def exportFont_(self, sender):
-		#print "__self.savePDF()"
 		self.savePDF()
