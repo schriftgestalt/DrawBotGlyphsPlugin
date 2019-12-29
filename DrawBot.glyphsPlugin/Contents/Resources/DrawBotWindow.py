@@ -15,6 +15,7 @@ from drawBot.misc import getDefault, setDefault, warnings
 
 from drawBot.ui.splitView import SplitView
 
+import objc
 from objc import super
 from AppKit import NSWindowController, NSToolbarFlexibleSpaceItemIdentifier, NSToolbarSpaceItemIdentifier, NSContinuouslyUpdatesValueBindingOption, NSImage, NSString, NSShadow, NSFont, NSFontAttributeName, NSForegroundColorAttributeName, NSShadowAttributeName, NSDocumentController, NSBezierPath
 
@@ -120,11 +121,11 @@ class GlyphsDrawBotController(NSWindowController):
 		]
 		self.w.split = SplitView((0, 0, -0, -27), paneDescriptors)
 		
-		self.w.runButton = Button((-67, -24, 50, 20), "Run", callback=self.runButtonAction)
+		self.w.runButton = Button((-67, -24, 50, 20), "Run", callback=self.runButtonAction_)
 		self.w.runButton.bind("\r", ["command"])
 		self.w.runButton._nsObject.setToolTip_(u"Run the script (cmd+\u23CE)")
 		
-		self.w.clearButton = Button((-135, -24, 58, 20), "Clear", callback=self.clearButtonAction)
+		self.w.clearButton = Button((-135, -24, 58, 20), "Clear", callback=self.clearButtonAction_)
 		self.w.clearButton.bind("k", ["command"])
 		self.w.clearButton._nsObject.setToolTip_(u"Clear Log (cmd+K)")
 		
@@ -140,7 +141,8 @@ class GlyphsDrawBotController(NSWindowController):
 
 	def __del__(self):
 		self.codeView.getNSTextView().unbind_("value")
-	
+
+	@objc.python_method
 	def runCode(self, liveCoding=False):
 		# get the code
 		try:
@@ -212,11 +214,12 @@ class GlyphsDrawBotController(NSWindowController):
 			self.output = None
 			self.stdout = None
 			self.stderr = None
-		except Exception, e:
-			print "-- Error", e
+		except Exception as e:
+			print("-- Error", e)
 			print(traceback.format_exc())
-			print "-- Error/"
+			print("-- Error/")
 
+	@objc.python_method
 	def checkSyntax(self, sender=None):
 		# get the code
 		code = self.code()
@@ -239,6 +242,7 @@ class GlyphsDrawBotController(NSWindowController):
 		self.stdout = None
 		self.stderr = None
 
+	@objc.python_method
 	def _savePDF(self, path):
 		# get the pdf date from the draw view
 		data = self.drawView.get()
@@ -246,19 +250,21 @@ class GlyphsDrawBotController(NSWindowController):
 			# if there is date save it
 			data.writeToFile_atomically_(path, False)
 
+	@objc.python_method
 	def savePDF(self, sender=None):
 		"""
 		Save the content as a pdf.
 		"""
 		# pop up a show put file sheet
 		vanilla.dialogs.putFile(fileTypes=["pdf"], parentWindow=self.window(), resultCallback=self._savePDF)
-		
+
 	def code(self):
 		"""
 		Returns the content of the code view as a string.
 		"""
 		return self.document().text
 
+	@objc.python_method
 	def setCode(self, code):
 		"""
 		Sets code in to the code view.
@@ -271,25 +277,28 @@ class GlyphsDrawBotController(NSWindowController):
 		Returns the pdf data from the draw view
 		"""
 		return self.drawView.get()
-	
+
+	@objc.python_method
 	def set(self, path, force=False):
 		self.setPath(path)
+
+	@objc.python_method
 	def assignToDocument(self, nsDocument):
 		# assing the window to the document
 		self.w.assignToDocument(nsDocument)
 	
 	# responders
 	
-	def runButtonAction(self, sender):
+	def runButtonAction_(self, sender):
 		self.runCode()
 	
-	def clearButtonAction(self, sender):
+	def clearButtonAction_(self, sender):
 		self.outPutView.clear()
 	
 	def commentSelection_(self, sender):
 		self.codeView.comment()
 		
-	def toolbarUncomment(self, sender):
+	def toolbarUncomment_(self, sender):
 		self.codeView.uncomment()
 	
 	def shiftSelectedLinesRight_(self, sender):
@@ -298,7 +307,7 @@ class GlyphsDrawBotController(NSWindowController):
 	def shiftSelectedLinesLeft_(self, sender):
 		self.codeView.dedent()
 	
-	def toolbarReload(self, sender):
+	def toolbarReload_(self, sender):
 		self.codeView.reload()
 	
 	def exportFont_(self, sender):

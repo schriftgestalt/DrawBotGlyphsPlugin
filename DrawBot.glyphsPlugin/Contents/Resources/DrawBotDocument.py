@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # encoding: utf-8
-
+from __future__ import print_function
 import objc
 import sys, os, re
 from objc import super
@@ -10,6 +10,8 @@ from AppKit import NSApplication, NSDocumentController, NSDocument, NSMenuItem
 
 GlyphsPluginProtocol = objc.protocolNamed("GlyphsPlugin")
 
+class DrawBotDocument (NSDocument):
+	__pyobjc_protocols__ = [GlyphsPluginProtocol]
 
 	def init(self):
 		"""
@@ -19,10 +21,10 @@ GlyphsPluginProtocol = objc.protocolNamed("GlyphsPlugin")
 		self = super(DrawBotDocument, self).init()
 		self.text = ""
 		return self
-	
+
 	def loadPlugin(self):
 		mainMenu = NSApplication.sharedApplication().mainMenu()
-		s = objc.selector(self.newDocument, signature='v@:')
+		s = objc.selector(self.newDocument, signature=b'v@:')
 		newMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("New Drawbot", s, "")
 		newMenuItem.setTarget_(self)
 		mainMenu.itemAtIndex_(1).submenu().insertItem_atIndex_(newMenuItem, 1)
@@ -49,7 +51,7 @@ GlyphsPluginProtocol = objc.protocolNamed("GlyphsPlugin")
 	
 	def title(self):
 		return "DrawBot"
-	
+
 	def interfaceVersion(self):
 		"""
 		Distinguishes the API version the plugin was built for. 
