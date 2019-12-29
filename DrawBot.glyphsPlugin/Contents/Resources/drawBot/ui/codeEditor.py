@@ -409,7 +409,8 @@ class CodeNSTextView(AppKit.NSTextView):
         self.highlightStyleMap = dict()
 
         for token, style in styles:
-            for key in "color", "bgcolor", "border":
+            style["color"] = _hexToNSColor(style["color"])
+            for key in "bgcolor", "border":
                 style[key] = _hexToNSColor(style[key], None)
             self.highlightStyleMap[token] = style
 
