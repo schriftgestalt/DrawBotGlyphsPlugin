@@ -31,8 +31,8 @@ MAXFLOAT = sys.float_info.max
 
 variableChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"
 
-fallbackTextColor = AppKit.NSColor.blackColor()
-fallbackBackgroundColor = AppKit.NSColor.whiteColor()
+fallbackTextColor = AppKit.NSColor.textColor()
+fallbackBackgroundColor = AppKit.NSColor.textBackgroundColor()
 fallbackHightLightColor = AppKit.NSColor.selectedTextBackgroundColor()
 
 fontSize = getDefault("DrawbotCodeEditorFontSize", 11)
@@ -57,7 +57,7 @@ fallbackTracebackAttributes = dict(fallbackTypeAttributes)
 fallbackTracebackAttributes[AppKit.NSForegroundColorAttributeName] = AppKit.NSColor.redColor()
 
 fallbackStyles = [
-    (Token,               '#000000'),
+    (Token,               ''),
 
     (Generic.Heading,     '#813E94'),
     (Generic.Subheading,  '#1A8BAD'),
@@ -128,6 +128,8 @@ def outputTextAttributesForStyles(styles=None, isError=False):
     for key in (AppKit.NSForegroundColorAttributeName, AppKit.NSUnderlineColorAttributeName):
         if key in attr:
             attr[key] = _hexToNSColor(attr[key])
+    if AppKit.NSForegroundColorAttributeName not in attr:
+        attr[AppKit.NSForegroundColorAttributeName] = fallbackTextColor
     return attr
 
 
@@ -166,7 +168,7 @@ class _JumpToLineSheet(object):
         self.w.close()
 
 
-def _hexToNSColor(color, default=AppKit.NSColor.blackColor()):
+def _hexToNSColor(color, default=fallbackTextColor):
     if color is None:
         return default
     if len(color) != 6:
@@ -177,7 +179,7 @@ def _hexToNSColor(color, default=AppKit.NSColor.blackColor()):
     return AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 1)
 
 
-def _hexStringToNSColor(txt, default=AppKit.NSColor.blackColor()):
+def _hexStringToNSColor(txt, default=fallbackTextColor):
     if not txt.startswith("#"):
         raise DrawBotError("Not a hex color, should start with '#'")
     return _hexToNSColor(txt[1:], default)
@@ -465,6 +467,7 @@ class CodeNSTextView(AppKit.NSTextView):
 
     # overwritting NSTextView methods
 
+    ''' # this messes with dark mode or rather is not needed as we rely on the NSAppearance and dynamic colors
     def setBackgroundColor_(self, color):
         # invert the insertioin pointer color
         # and the fallback text color and background color
@@ -487,6 +490,7 @@ class CodeNSTextView(AppKit.NSTextView):
             self.enclosingScrollView().setBackgroundColor_(color)
         self._updateRulersColors()
         super(CodeNSTextView, self).setBackgroundColor_(color)
+    '''
 
     def changeColor_(self, color):
         # prevent external color overwrite,
