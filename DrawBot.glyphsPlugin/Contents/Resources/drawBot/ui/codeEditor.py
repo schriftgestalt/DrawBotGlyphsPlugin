@@ -112,7 +112,7 @@ def styleFromDefault():
             value = "#%s" % value
         styles[token] = value
     style = type('DrawBotStyle', (Style,), dict(styles=styles))
-    style.background_color = _NSColorToHexString(getColorDefault("PyDEBackgroundColor", fallbackBackgroundColor))
+    #style.background_color = _NSColorToHexString(getColorDefault("PyDEBackgroundColor", fallbackBackgroundColor))
     style.highlight_color = _NSColorToHexString(getColorDefault("PyDEHightLightColor", fallbackHightLightColor))
     return style
 
@@ -401,8 +401,8 @@ class CodeNSTextView(AppKit.NSTextView):
     def _buildhighlightStyleMap(self):
         # cache all tokens with nscolors
         styles = self.highlightStyle()
-        backgroundColor = _hexStringToNSColor(styles.background_color, self._fallbackBackgroundColor)
-        self.setBackgroundColor_(backgroundColor)
+        #backgroundColor = _hexStringToNSColor(styles.background_color, self._fallbackBackgroundColor)
+        #self.setBackgroundColor_(backgroundColor)
         selectionColor = _hexStringToNSColor(styles.highlight_color, self._fallbackHightLightColor)
         self.setSelectedTextAttributes_({AppKit.NSBackgroundColorAttributeName: selectionColor})
 
@@ -1171,8 +1171,8 @@ class CodeNSTextView(AppKit.NSTextView):
                     ruler.setTextColor_(numberStyle["color"])
             if hasattr(ruler, "setRulerBackgroundColor_"):
                 styles = self.highlightStyle()
-                backgroundColor = _hexStringToNSColor(styles.background_color, self._fallbackBackgroundColor)
-                ruler.setRulerBackgroundColor_(backgroundColor)
+                #backgroundColor = _hexStringToNSColor(styles.background_color, self._fallbackBackgroundColor)
+                #ruler.setRulerBackgroundColor_(backgroundColor)
 
     @python_method
     def _deleteIndentation(self, sender, isForward, superFunc):
@@ -1490,8 +1490,8 @@ class OutPutCodeNSTextView(CodeNSTextView):
         self.textAttributes = outputTextAttributesForStyles(styles)
         self.tracebackAttributes = outputTextAttributesForStyles(styles, isError=True)
 
-        backgroundColor = _hexStringToNSColor(styles.background_color, self._fallbackBackgroundColor)
-        self.setBackgroundColor_(backgroundColor)
+        #backgroundColor = _hexStringToNSColor(styles.background_color, self._fallbackBackgroundColor)
+        #self.setBackgroundColor_(backgroundColor)
         selectionColor = _hexStringToNSColor(styles.highlight_color, self._fallbackHightLightColor)
         self.setSelectedTextAttributes_({AppKit.NSBackgroundColorAttributeName: selectionColor})
 
