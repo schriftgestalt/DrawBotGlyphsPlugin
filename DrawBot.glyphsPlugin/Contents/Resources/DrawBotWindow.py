@@ -1,33 +1,28 @@
-#from __future__ import absolute_import
+from __future__ import print_function
 
 import AppKit
-from vanilla import *
-import vanilla.dialogs
-
-from drawBot.ui.codeEditor import CodeEditor, OutPutEditor
-from drawBot.ui.drawView import DrawView, ThumbnailView
-
-from drawBot.scriptTools import ScriptRunner, CallbackRunner, StdOutput
-#from drawBot.scriptTools import _Helper # for ScriptRunner
-from drawBot.drawBotDrawingTools import _drawBotDrawingTool
-from drawBot.context.drawBotContext import DrawBotContext
-from drawBot.misc import getDefault, setDefault, warnings
-
-from drawBot.ui.splitView import SplitView
-
+from AppKit import NSWindowController, NSToolbarFlexibleSpaceItemIdentifier, NSToolbarSpaceItemIdentifier, NSContinuouslyUpdatesValueBindingOption, NSImage, NSString, NSShadow, NSFont, NSFontAttributeName, NSForegroundColorAttributeName, NSShadowAttributeName, NSDocumentController, NSBezierPath
+from Foundation import NSUserDefaults
 import objc
 from objc import super
-from AppKit import NSWindowController, NSToolbarFlexibleSpaceItemIdentifier, NSToolbarSpaceItemIdentifier, NSContinuouslyUpdatesValueBindingOption, NSImage, NSString, NSShadow, NSFont, NSFontAttributeName, NSForegroundColorAttributeName, NSShadowAttributeName, NSDocumentController, NSBezierPath
-
-from Foundation import NSUserDefaults
-
-from objectsGS import CurrentFont, CurrentGlyph
-from GlyphsApp import GetSaveFile
 
 import sys, os
 import traceback
 
+from GlyphsApp import GetSaveFile
+
+from vanilla import *
+import vanilla.dialogs
+
+from drawBot.context.drawBotContext import DrawBotContext
 from drawBot.context.baseContext import BezierPath
+from drawBot.drawBotDrawingTools import _drawBotDrawingTool
+from drawBot.misc import getDefault, setDefault, warnings
+from drawBot.scriptTools import ScriptRunner, CallbackRunner, StdOutput
+from drawBot.ui.codeEditor import CodeEditor, OutPutEditor
+from drawBot.ui.drawView import DrawView, ThumbnailView
+from drawBot.ui.splitView import SplitView
+#from drawBot.scriptTools import _Helper # for ScriptRunner
 
 sys.path.append(os.path.dirname(__file__))
 
@@ -71,7 +66,6 @@ class GlyphsDrawBotController(NSWindowController):
 	def init(self):
 		self = super(GlyphsDrawBotController, self).init()
 		document = None
-		#print "GlyphsDrawBotController.init"
 		# make a window
 		self.w = Window((400, 400), "DrawBot", minSize=(200, 200), textured=False)
 		# setting previously stored frames, if any
