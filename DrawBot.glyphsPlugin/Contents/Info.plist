@@ -3,9 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>English</string>
-	<key>CFBundleDisplayName</key>
-	<string>DrawBot</string>
+	<string>en</string>
 	<key>CFBundleExecutable</key>
 	<string>plugin</string>
 	<key>CFBundleIdentifier</key>
@@ -14,12 +12,10 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>DrawBot</string>
-	<key>CFBundlePackageType</key>
-	<string>BNDL</string>
-	<key>CFBundleVersion</key>
-	<string>3</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.0.4</string>
+	<string>0.0.5</string>
+	<key>CFBundleVersion</key>
+	<string>4</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -46,10 +42,10 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright, Georg Seifert, 2018</string>
 	<key>NSPrincipalClass</key>
-	<string>DrawBotDocument</string>
+	<string>DrawBotPlugin</string>
 	<key>PyMainFileNames</key>
 	<array>
-		<string>../MacOS/main.py</string>
+		<string>DrawBotDocument.py</string>
 	</array>
 </dict>
 </plist>
