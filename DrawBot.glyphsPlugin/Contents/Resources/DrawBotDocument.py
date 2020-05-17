@@ -6,10 +6,26 @@ from objc import super
 from Foundation import NSLog, NSString, NSUTF8StringEncoding
 from AppKit import NSApplication, NSDocumentController, NSDocument, NSMenuItem
 
-GlyphsPluginProtocol = objc.protocolNamed("GlyphsPlugin")
+from GlyphsApp import Glyphs, FILE_MENU
+from GlyphsApp.plugins import GeneralPlugin
+
+class DrawBotPlugin(GeneralPlugin):
+
+	@objc.python_method
+	def settings(self):
+		self.name = Glyphs.localize({'en': 'DrawBot'})
+	@objc.python_method
+	def start(self):
+		newMenuItem = NSMenuItem("New Drawbot", self.newDocument_)
+		Glyphs.menu[FILE_MENU].insert(1, newMenuItem)
+
+	def newDocument_(self, sender):
+		newDoc = DrawBotDocument.new()
+		NSDocumentController.sharedDocumentController().addDocument_(newDoc)
+		newDoc.makeWindowControllers()
+		newDoc.showWindows()
 
 class DrawBotDocument (NSDocument):
-	__pyobjc_protocols__ = [GlyphsPluginProtocol]
 
 	def init(self):
 		"""
@@ -20,24 +36,12 @@ class DrawBotDocument (NSDocument):
 		self.text = ""
 		return self
 
-	def loadPlugin(self):
-		mainMenu = NSApplication.sharedApplication().mainMenu()
-		s = objc.selector(self.newDocument, signature=b'v@:')
-		newMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("New Drawbot", s, "")
-		newMenuItem.setTarget_(self)
-		mainMenu.itemAtIndex_(1).submenu().insertItem_atIndex_(newMenuItem, 1)
 	
 	def makeWindowControllers(self):
 		from DrawBotWindow import GlyphsDrawBotController
 		WindowController = GlyphsDrawBotController.alloc().init()
 		self.addWindowController_(WindowController)
 		
-	def newDocument(self):
-		newDoc = DrawBotDocument.alloc().init()
-		NSDocumentController.sharedDocumentController().addDocument_(newDoc)
-		newDoc.makeWindowControllers()
-		newDoc.showWindows()
-	
 	def windowController(self):
 		return self.windowControllers()[0]
 	
@@ -47,16 +51,6 @@ class DrawBotDocument (NSDocument):
 	# 	"""
 	# 	pass
 	
-	def title(self):
-		return "DrawBot"
-
-	def interfaceVersion(self):
-		"""
-		Distinguishes the API version the plugin was built for. 
-		Return 1.
-		"""
-		return 1
-
 	def dataRepresentationOfType_(self, aType):
 		if len(self.text) > 0:
 			return NSString.stringWithString_(self.text).dataUsingEncoding_(NSUTF8StringEncoding)
