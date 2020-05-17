@@ -4,10 +4,12 @@ import AppKit
 import CoreText
 import Quartz
 
-import math
+import sys, math
 
 from fontTools.pens.basePen import BasePen
-from fontTools.misc.py23 import basestring, PY2, unichr
+from fontTools.misc.py23 import basestring, unichr
+
+PY2 = sys.version_info[0] == 2
 
 from drawBot.misc import DrawBotError, cmyk2rgb, warnings, transformationAtCenter
 

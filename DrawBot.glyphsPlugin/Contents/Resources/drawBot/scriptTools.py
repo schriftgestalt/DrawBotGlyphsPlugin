@@ -16,7 +16,8 @@ from ctypes.util import find_library
 import threading
 from distutils.version import StrictVersion
 import platform
-from fontTools.misc.py23 import PY2, PY3
+PY2 = sys.version_info[0] == 2
+PY3 = sys.version_info[0] == 3
 from drawBot.misc import getDefault #, warnings ?? there is a conflict with `import warnings` in line 12
 from objc import super
 

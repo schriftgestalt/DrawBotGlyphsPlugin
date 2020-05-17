@@ -20,7 +20,9 @@ except Exception:
 
 from vanilla import *
 from vanilla.py23 import python_method
-from fontTools.misc.py23 import PY3, unichr
+from fontTools.misc.py23 import unichr
+
+PY3 = sys.version_info[0] == 3
 
 from .lineNumberRulerView import LineNumberNSRulerView
 from drawBot.misc import getDefault, getFontDefault, getColorDefault, DrawBotError

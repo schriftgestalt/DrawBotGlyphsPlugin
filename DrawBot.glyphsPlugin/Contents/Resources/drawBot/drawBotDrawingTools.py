@@ -6,6 +6,7 @@ import Quartz
 
 import math
 import os
+import sys
 import random
 
 from .context import getContextForFileExt, getContextOptions, getFileExtensions, getContextOptionsDocs
@@ -18,7 +19,9 @@ from .context.tools import openType
 
 from .misc import DrawBotError, warnings, VariableController, optimizePath, isPDF, isEPS, isGIF, transformationAtCenter, clearMemoizeCache
 
-from fontTools.misc.py23 import basestring, PY2
+from fontTools.misc.py23 import basestring
+
+PY2 = sys.version_info[0] == 2
 
 
 def _getmodulecontents(module, names=None):
