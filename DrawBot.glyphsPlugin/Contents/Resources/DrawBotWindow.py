@@ -304,5 +304,7 @@ class GlyphsDrawBotController(NSWindowController):
 	def toolbarReload_(self, sender):
 		self.codeView.reload()
 	
-	def exportFont_(self, sender):
+	def exportFontAction_(self, sender): # new API in Glyphs 3
 		self.savePDF()
+	def exportFont_(self, sender):
+		self.exportFontAction_(sender)
