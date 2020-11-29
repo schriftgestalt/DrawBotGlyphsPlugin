@@ -16,7 +16,7 @@
 from __future__ import print_function
 
 LEXERS = {
-    'PythonLexer': ('pygments.lexers.python', 'Python', ('python', 'py', 'sage'), ('*.py', '*.pyw', '*.sc', 'SConstruct', 'SConscript', '*.tac', '*.sage'), ('text/x-python', 'application/x-python')),
+    'PythonLexer': ('pygments.lexers.python', 'Python', ('python', 'py', 'sage', 'python3', 'py3'), ('*.py', '*.pyw', '*.jy', '*.sage', '*.sc', 'SConstruct', 'SConscript', '*.bzl', 'BUCK', 'BUILD', 'BUILD.bazel', 'WORKSPACE', '*.tac'), ('text/x-python', 'application/x-python', 'text/x-python3', 'application/x-python3')),
 }
 
 if __name__ == '__main__':  # pragma: no cover

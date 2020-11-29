@@ -11,7 +11,7 @@
 
     Formatter version 1.
 
-    :copyright: Copyright 2006-2014 by the Pygments team, see AUTHORS.
+    :copyright: Copyright 2006-2020 by the Pygments team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
 
@@ -27,17 +27,20 @@
 import sys
 
 from pygments.formatter import Formatter
+from pygments.console import codes
+from pygments.style import ansicolors
 
 
-__all__ = ['Terminal256Formatter']
+__all__ = ['Terminal256Formatter', 'TerminalTrueColorFormatter']
 
 
 class EscapeSequence:
-    def __init__(self, fg=None, bg=None, bold=False, underline=False):
+    def __init__(self, fg=None, bg=None, bold=False, underline=False, italic=False):
         self.fg = fg
         self.bg = bg
         self.bold = bold
         self.underline = underline
+        self.italic = italic
 
     def escape(self, attrs):
         if len(attrs):
@@ -47,13 +50,41 @@ class EscapeSequence:
     def color_string(self):
         attrs = []
         if self.fg is not None:
-            attrs.extend(("38", "5", "%i" % self.fg))
+            if self.fg in ansicolors:
+                esc = codes[self.fg.replace('ansi','')]
+                if ';01m' in esc:
+                    self.bold = True
+                # extract fg color code.
+                attrs.append(esc[2:4])
+            else:
+                attrs.extend(("38", "5", "%i" % self.fg))
         if self.bg is not None:
-            attrs.extend(("48", "5", "%i" % self.bg))
+            if self.bg in ansicolors:
+                esc = codes[self.bg.replace('ansi','')]
+                # extract fg color code, add 10 for bg.
+                attrs.append(str(int(esc[2:4])+10))
+            else:
+                attrs.extend(("48", "5", "%i" % self.bg))
         if self.bold:
             attrs.append("01")
         if self.underline:
             attrs.append("04")
+        if self.italic:
+            attrs.append("03")
+        return self.escape(attrs)
+
+    def true_color_string(self):
+        attrs = []
+        if self.fg:
+            attrs.extend(("38", "2", str(self.fg[0]), str(self.fg[1]), str(self.fg[2])))
+        if self.bg:
+            attrs.extend(("48", "2", str(self.bg[0]), str(self.bg[1]), str(self.bg[2])))
+        if self.bold:
+            attrs.append("01")
+        if self.underline:
+            attrs.append("04")
+        if self.italic:
+            attrs.append("03")
         return self.escape(attrs)
 
     def reset_string(self):
@@ -62,15 +93,15 @@ class EscapeSequence:
             attrs.append("39")
         if self.bg is not None:
             attrs.append("49")
-        if self.bold or self.underline:
+        if self.bold or self.underline or self.italic:
             attrs.append("00")
         return self.escape(attrs)
 
 
 class Terminal256Formatter(Formatter):
-    r"""
+    """
     Format tokens with ANSI color sequences, for output in a 256-color
-    terminal or console. Like in `TerminalFormatter` color sequences
+    terminal or console.  Like in `TerminalFormatter` color sequences
     are terminated at newlines, so that paging the output works correctly.
 
     The formatter takes colors from a style defined by the `style` option
@@ -78,6 +109,17 @@ class Terminal256Formatter(Formatter):
     underline attributes from the style are preserved (and displayed).
 
     .. versionadded:: 0.9
+
+    .. versionchanged:: 2.2
+       If the used style defines foreground colors in the form ``#ansi*``, then
+       `Terminal256Formatter` will map these to non extended foreground color.
+       See :ref:`AnsiTerminalStyle` for more information.
+
+    .. versionchanged:: 2.4
+       The ANSI color names have been updated with names that are easier to
+       understand and align with colornames of other projects and terminals.
+       See :ref:`this table <new-ansi-color-names>` for more information.
+
 
     Options accepted:
 
@@ -98,6 +140,7 @@ class Terminal256Formatter(Formatter):
 
         self.usebold = 'nobold' not in options
         self.useunderline = 'nounderline' not in options
+        self.useitalic = 'noitalic' not in options
 
         self._build_color_table()  # build an RGB-to-256 color conversion table
         self._setup_styles()  # convert selected style's colors to term. colors
@@ -157,6 +200,10 @@ class Terminal256Formatter(Formatter):
 
     def _color_index(self, color):
         index = self.best_match.get(color, None)
+        if color in ansicolors:
+            # strip the `ansi/#ansi` part and look up code
+            index = color
+            self.best_match[color] = index
         if index is None:
             try:
                 rgb = int(str(color), 16)
@@ -173,24 +220,25 @@ class Terminal256Formatter(Formatter):
     def _setup_styles(self):
         for ttype, ndef in self.style:
             escape = EscapeSequence()
-            if ndef['color']:
+            # get foreground from ansicolor if set
+            if ndef['ansicolor']:
+                escape.fg = self._color_index(ndef['ansicolor'])
+            elif ndef['color']:
                 escape.fg = self._color_index(ndef['color'])
-            if ndef['bgcolor']:
+            if ndef['bgansicolor']:
+                escape.bg = self._color_index(ndef['bgansicolor'])
+            elif ndef['bgcolor']:
                 escape.bg = self._color_index(ndef['bgcolor'])
             if self.usebold and ndef['bold']:
                 escape.bold = True
             if self.useunderline and ndef['underline']:
                 escape.underline = True
+            if self.useitalic and ndef['italic']:
+                escape.italic = True
             self.style_string[str(ttype)] = (escape.color_string(),
                                              escape.reset_string())
 
     def format(self, tokensource, outfile):
-        # hack: if the output is a terminal and has an encoding set,
-        # use that to avoid unicode encode problems
-        if not self.encoding and hasattr(outfile, "encoding") and \
-           hasattr(outfile, "isatty") and outfile.isatty() and \
-           sys.version_info < (3,):
-            self.encoding = outfile.encoding
         return Formatter.format(self, tokensource, outfile)
 
     def format_unencoded(self, tokensource, outfile):
@@ -221,3 +269,51 @@ class Terminal256Formatter(Formatter):
 
             if not_found:
                 outfile.write(value)
+
+
+class TerminalTrueColorFormatter(Terminal256Formatter):
+    r"""
+    Format tokens with ANSI color sequences, for output in a true-color
+    terminal or console.  Like in `TerminalFormatter` color sequences
+    are terminated at newlines, so that paging the output works correctly.
+
+    .. versionadded:: 2.1
+
+    Options accepted:
+
+    `style`
+        The style to use, can be a string or a Style subclass (default:
+        ``'default'``).
+    """
+    name = 'TerminalTrueColor'
+    aliases = ['terminal16m', 'console16m', '16m']
+    filenames = []
+
+    def _build_color_table(self):
+        pass
+
+    def _color_tuple(self, color):
+        try:
+            rgb = int(str(color), 16)
+        except ValueError:
+            return None
+        r = (rgb >> 16) & 0xff
+        g = (rgb >> 8) & 0xff
+        b = rgb & 0xff
+        return (r, g, b)
+
+    def _setup_styles(self):
+        for ttype, ndef in self.style:
+            escape = EscapeSequence()
+            if ndef['color']:
+                escape.fg = self._color_tuple(ndef['color'])
+            if ndef['bgcolor']:
+                escape.bg = self._color_tuple(ndef['bgcolor'])
+            if self.usebold and ndef['bold']:
+                escape.bold = True
+            if self.useunderline and ndef['underline']:
+                escape.underline = True
+            if self.useitalic and ndef['italic']:
+                escape.italic = True
+            self.style_string[str(ttype)] = (escape.true_color_string(),
+                                             escape.reset_string())

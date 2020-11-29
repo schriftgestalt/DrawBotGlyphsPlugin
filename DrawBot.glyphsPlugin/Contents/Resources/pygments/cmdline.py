@@ -5,32 +5,34 @@
 
     Command line interface.
 
-    :copyright: Copyright 2006-2014 by the Pygments team, see AUTHORS.
+    :copyright: Copyright 2006-2020 by the Pygments team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
 
-from __future__ import print_function
-
+import os
 import sys
 import getopt
 from textwrap import dedent
 
 from pygments import __version__, highlight
 from pygments.util import ClassNotFound, OptionError, docstring_headline, \
-    guess_decode, guess_decode_from_terminal, terminal_encoding
+    guess_decode, guess_decode_from_terminal, terminal_encoding, \
+    UnclosingTextIOWrapper
 from pygments.lexers import get_all_lexers, get_lexer_by_name, guess_lexer, \
-    get_lexer_for_filename, find_lexer_class, TextLexer
+    load_lexer_from_file, get_lexer_for_filename, find_lexer_class_for_filename
+from pygments.lexers.special import TextLexer
 from pygments.formatters.latex import LatexEmbeddedLexer, LatexFormatter
 from pygments.formatters import get_all_formatters, get_formatter_by_name, \
-    get_formatter_for_filename, find_formatter_class, \
-    TerminalFormatter  # pylint:disable-msg=E0611
+    load_formatter_from_file, get_formatter_for_filename, find_formatter_class
+from pygments.formatters.terminal import TerminalFormatter
+from pygments.formatters.terminal256 import Terminal256Formatter
 from pygments.filters import get_all_filters, find_filter_class
 from pygments.styles import get_all_styles, get_style_by_name
 
 
 USAGE = """\
 Usage: %s [-l <lexer> | -g] [-F <filter>[:<options>]] [-f <formatter>]
-          [-O <options>] [-P <option=value>] [-s] [-o <outfile>] [<infile>]
+          [-O <options>] [-P <option=value>] [-s] [-v] [-x] [-o <outfile>] [<infile>]
 
        %s -S <style> -f <formatter> [-a <arg>] [-O <options>] [-P <option=value>]
        %s -L [<which> ...]
@@ -55,6 +57,14 @@ plain text if this fails (this can work for stdin).
 Likewise, <formatter> is a formatter name, and will be guessed from
 the extension of the output file name. If no output file is given,
 the terminal formatter will be used by default.
+
+The additional option -x allows custom lexers and formatters to be
+loaded from a .py file relative to the current working directory. For
+example, ``-l ./customlexer.py -x``. By default, this option expects a
+file with a class named CustomLexer or CustomFormatter; you can also
+specify your own class name with a colon (``-l ./lexer.py:MyLexer``).
+Users should be very careful not to use this option with untrusted files,
+because it will import and run them.
 
 With the -O option, you can give the lexer and formatter a comma-
 separated list of options, e.g. ``-O bg=light,python=cool``.
@@ -90,6 +100,9 @@ waiting to process the entire file.  This only works for stdin, and
 is intended for streaming input such as you get from 'tail -f'.
 Example usage: "tail -f sql.log | pygmentize -s -l sql"
 
+The -v option prints a detailed traceback on unhandled exceptions,
+which is useful for debugging and bug reports.
+
 The -h option prints this help.
 The -V option prints the package version.
 """
@@ -100,7 +113,7 @@ def _parse_options(o_strs):
     if not o_strs:
         return opts
     for o_str in o_strs:
-        if not o_str:
+        if not o_str.strip():
             continue
         o_args = o_str.split(',')
         for o_arg in o_args:
@@ -132,7 +145,7 @@ def _parse_filters(f_strs):
 def _print_help(what, name):
     try:
         if what == 'lexer':
-            cls = find_lexer_class(name)
+            cls = get_lexer_by_name(name)
             print("Help on the %s lexer:" % cls.name)
             print(dedent(cls.__doc__))
         elif what == 'formatter':
@@ -143,8 +156,10 @@ def _print_help(what, name):
             cls = find_filter_class(name)
             print("Help on the %s filter:" % name)
             print(dedent(cls.__doc__))
-    except AttributeError:
+        return 0
+    except (AttributeError, ValueError):
         print("%s not found!" % what, file=sys.stderr)
+        return 1
 
 
 def _print_list(what):
@@ -217,7 +232,7 @@ def main_inner(popts, args, usage):
         return 0
 
     if opts.pop('-V', None) is not None:
-        print('Pygments version %s, (c) 2006-2014 by Georg Brandl.' % __version__)
+        print('Pygments version %s, (c) 2006-2020 by Georg Brandl.' % __version__)
         return 0
 
     # handle ``pygmentize -L``
@@ -242,13 +257,12 @@ def main_inner(popts, args, usage):
             print(usage, file=sys.stderr)
             return 2
 
-        what, name = args
+        what, name = args  # pylint: disable=unbalanced-tuple-unpacking
         if what not in ('lexer', 'formatter', 'filter'):
             print(usage, file=sys.stderr)
             return 2
 
-        _print_help(what, name)
-        return 0
+        return _print_help(what, name)
 
     # parse -O options
     parsed_opts = _parse_options(O_opts)
@@ -265,19 +279,15 @@ def main_inner(popts, args, usage):
     opts.pop('-P', None)
 
     # encodings
-    inencoding  = parsed_opts.get('inencoding', parsed_opts.get('encoding'))
+    inencoding = parsed_opts.get('inencoding', parsed_opts.get('encoding'))
     outencoding = parsed_opts.get('outencoding', parsed_opts.get('encoding'))
 
     # handle ``pygmentize -N``
     infn = opts.pop('-N', None)
     if infn is not None:
-        try:
-            lexer = get_lexer_for_filename(infn, **parsed_opts)
-        except ClassNotFound as err:
-            lexer = TextLexer()
-        except OptionError as err:
-            print('Error:', err, file=sys.stderr)
-            return 1
+        lexer = find_lexer_class_for_filename(infn)
+        if lexer is None:
+            lexer = TextLexer
 
         print(lexer.aliases[0])
         return 0
@@ -301,12 +311,7 @@ def main_inner(popts, args, usage):
             print(err, file=sys.stderr)
             return 1
 
-        arg = a_opt or ''
-        try:
-            print(fmter.get_style_defs(arg))
-        except Exception as err:
-            print('Error:', err, file=sys.stderr)
-            return 1
+        print(fmter.get_style_defs(a_opt or ''))
         return 0
 
     # if no -S is given, -a is not allowed
@@ -318,17 +323,44 @@ def main_inner(popts, args, usage):
     F_opts = _parse_filters(F_opts)
     opts.pop('-F', None)
 
+    allow_custom_lexer_formatter = False
+    # -x: allow custom (eXternal) lexers and formatters
+    if opts.pop('-x', None) is not None:
+        allow_custom_lexer_formatter = True
+
     # select lexer
     lexer = None
 
     # given by name?
     lexername = opts.pop('-l', None)
     if lexername:
-        try:
-            lexer = get_lexer_by_name(lexername, **parsed_opts)
-        except (OptionError, ClassNotFound) as err:
-            print('Error:', err, file=sys.stderr)
-            return 1
+        # custom lexer, located relative to user's cwd
+        if allow_custom_lexer_formatter and '.py' in lexername:
+            try:
+                filename = None
+                name = None
+                if ':' in lexername:
+                    filename, name = lexername.rsplit(':', 1)
+
+                    if '.py' in name:
+                        # This can happen on Windows: If the lexername is
+                        # C:\lexer.py -- return to normal load path in that case
+                        name = None
+
+                if filename and name:
+                    lexer = load_lexer_from_file(filename, name,
+                                                 **parsed_opts)
+                else:
+                    lexer = load_lexer_from_file(lexername, **parsed_opts)
+            except ClassNotFound as err:
+                print('Error:', err, file=sys.stderr)
+                return 1
+        else:
+            try:
+                lexer = get_lexer_by_name(lexername, **parsed_opts)
+            except (OptionError, ClassNotFound) as err:
+                print('Error:', err, file=sys.stderr)
+                return 1
 
     # read input code
     code = None
@@ -341,7 +373,7 @@ def main_inner(popts, args, usage):
         if '-s' in opts:
             print('Error: -s option not usable when input file specified',
                   file=sys.stderr)
-            return 1
+            return 2
 
         infn = args[0]
         try:
@@ -373,11 +405,7 @@ def main_inner(popts, args, usage):
     elif '-s' not in opts:  # treat stdin as full file (-s support is later)
         # read code from terminal, always in binary mode since we want to
         # decode ourselves and be tolerant with it
-        if sys.version_info > (3,):
-            # Python 3: we have to use .buffer to get a binary stream
-            code = sys.stdin.buffer.read()
-        else:
-            code = sys.stdin.read()
+        code = sys.stdin.buffer.read()  # use .buffer to get a binary stream
         if not inencoding:
             code, inencoding = guess_decode_from_terminal(code, sys.stdin)
             # else the lexer will do the decoding
@@ -387,15 +415,50 @@ def main_inner(popts, args, usage):
             except ClassNotFound:
                 lexer = TextLexer(**parsed_opts)
 
+    else:  # -s option needs a lexer with -l
+        if not lexer:
+            print('Error: when using -s a lexer has to be selected with -l',
+                  file=sys.stderr)
+            return 2
+
+    # process filters
+    for fname, fopts in F_opts:
+        try:
+            lexer.add_filter(fname, **fopts)
+        except ClassNotFound as err:
+            print('Error:', err, file=sys.stderr)
+            return 1
+
     # select formatter
     outfn = opts.pop('-o', None)
     fmter = opts.pop('-f', None)
     if fmter:
-        try:
-            fmter = get_formatter_by_name(fmter, **parsed_opts)
-        except (OptionError, ClassNotFound) as err:
-            print('Error:', err, file=sys.stderr)
-            return 1
+        # custom formatter, located relative to user's cwd
+        if allow_custom_lexer_formatter and '.py' in fmter:
+            try:
+                filename = None
+                name = None
+                if ':' in fmter:
+                    # Same logic as above for custom lexer
+                    filename, name = fmter.rsplit(':', 1)
+
+                    if '.py' in name:
+                        name = None
+
+                if filename and name:
+                    fmter = load_formatter_from_file(filename, name,
+                                    **parsed_opts)
+                else:
+                    fmter = load_formatter_from_file(fmter, **parsed_opts)
+            except ClassNotFound as err:
+                print('Error:', err, file=sys.stderr)
+                return 1
+        else:
+            try:
+                fmter = get_formatter_by_name(fmter, **parsed_opts)
+            except (OptionError, ClassNotFound) as err:
+                print('Error:', err, file=sys.stderr)
+                return 1
 
     if outfn:
         if not fmter:
@@ -411,12 +474,11 @@ def main_inner(popts, args, usage):
             return 1
     else:
         if not fmter:
-            fmter = TerminalFormatter(**parsed_opts)
-        if sys.version_info > (3,):
-            # Python 3: we have to use .buffer to get a binary stream
-            outfile = sys.stdout.buffer
-        else:
-            outfile = sys.stdout
+            if '256' in os.environ.get('TERM', ''):
+                fmter = Terminal256Formatter(**parsed_opts)
+            else:
+                fmter = TerminalFormatter(**parsed_opts)
+        outfile = sys.stdout.buffer
 
     # determine output encoding if not explicitly selected
     if not outencoding:
@@ -429,12 +491,10 @@ def main_inner(popts, args, usage):
 
     # provide coloring under Windows, if possible
     if not outfn and sys.platform in ('win32', 'cygwin') and \
-       fmter.name in ('Terminal', 'Terminal256'):
+       fmter.name in ('Terminal', 'Terminal256'):  # pragma: no cover
         # unfortunately colorama doesn't support binary streams on Py3
-        if sys.version_info > (3,):
-            from pygments.util import UnclosingTextIOWrapper
-            outfile = UnclosingTextIOWrapper(outfile, encoding=fmter.encoding)
-            fmter.encoding = None
+        outfile = UnclosingTextIOWrapper(outfile, encoding=fmter.encoding)
+        fmter.encoding = None
         try:
             import colorama.initialise
         except ImportError:
@@ -452,32 +512,20 @@ def main_inner(popts, args, usage):
         right = escapeinside[1]
         lexer = LatexEmbeddedLexer(left, right, lexer)
 
-    # process filters
-    for fname, fopts in F_opts:
-        try:
-            lexer.add_filter(fname, **fopts)
-        except ClassNotFound as err:
-            print('Error:', err, file=sys.stderr)
-            return 1
-
     # ... and do it!
     if '-s' not in opts:
         # process whole input as per normal...
-        highlight(code, lexer, fmter, outfile)
+        try:
+            highlight(code, lexer, fmter, outfile)
+        finally:
+            if outfn:
+                outfile.close()
         return 0
     else:
-        if not lexer:
-            print('Error: when using -s a lexer has to be selected with -l',
-                  file=sys.stderr)
-            return 1
         # line by line processing of stdin (eg: for 'tail -f')...
         try:
             while 1:
-                if sys.version_info > (3,):
-                    # Python 3: we have to use .buffer to get a binary stream
-                    line = sys.stdin.buffer.readline()
-                else:
-                    line = sys.stdin.readline()
+                line = sys.stdin.buffer.readline()
                 if not line:
                     break
                 if not inencoding:
@@ -485,8 +533,12 @@ def main_inner(popts, args, usage):
                 highlight(line, lexer, fmter, outfile)
                 if hasattr(outfile, 'flush'):
                     outfile.flush()
-        except KeyboardInterrupt:
             return 0
+        except KeyboardInterrupt:  # pragma: no cover
+            return 0
+        finally:
+            if outfn:
+                outfile.close()
 
 
 def main(args=sys.argv):
@@ -496,7 +548,7 @@ def main(args=sys.argv):
     usage = USAGE % ((args[0],) * 6)
 
     try:
-        popts, args = getopt.getopt(args[1:], "l:f:F:o:O:P:LS:a:N:hVHgs")
+        popts, args = getopt.getopt(args[1:], "l:f:F:o:O:P:LS:a:N:vhVHgsx")
     except getopt.GetoptError:
         print(usage, file=sys.stderr)
         return 2
@@ -504,6 +556,18 @@ def main(args=sys.argv):
     try:
         return main_inner(popts, args, usage)
     except Exception:
+        if '-v' in dict(popts):
+            print(file=sys.stderr)
+            print('*' * 65, file=sys.stderr)
+            print('An unhandled exception occurred while highlighting.',
+                  file=sys.stderr)
+            print('Please report the whole traceback to the issue tracker at',
+                  file=sys.stderr)
+            print('<https://github.com/pygments/pygments/issues>.',
+                  file=sys.stderr)
+            print('*' * 65, file=sys.stderr)
+            print(file=sys.stderr)
+            raise
         import traceback
         info = traceback.format_exception(*sys.exc_info())
         msg = info[-1].strip()
@@ -513,4 +577,6 @@ def main(args=sys.argv):
         print(file=sys.stderr)
         print('*** Error while highlighting:', file=sys.stderr)
         print(msg, file=sys.stderr)
+        print('*** If this is a bug you want to report, please rerun with -v.',
+              file=sys.stderr)
         return 1
