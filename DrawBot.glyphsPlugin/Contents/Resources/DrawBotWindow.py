@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 import AppKit
-from AppKit import NSWindowController, NSToolbarFlexibleSpaceItemIdentifier, NSToolbarSpaceItemIdentifier, NSContinuouslyUpdatesValueBindingOption, NSImage, NSString, NSShadow, NSFont, NSFontAttributeName, NSForegroundColorAttributeName, NSShadowAttributeName, NSDocumentController, NSBezierPath
+from AppKit import NSWindowController, NSToolbarFlexibleSpaceItemIdentifier, NSToolbarSpaceItemIdentifier, NSContinuouslyUpdatesValueBindingOption, NSImage, NSString, NSShadow, NSFont, NSFontAttributeName, NSForegroundColorAttributeName, NSShadowAttributeName, NSDocumentController, NSBezierPath, NSWindowCollectionBehaviorFullScreenPrimary
 from Foundation import NSUserDefaults
 import objc
 from objc import super
@@ -74,12 +74,8 @@ class GlyphsDrawBotController(NSWindowController):
 		self.setWindow_(_NSWindow)
 		_NSWindow.setDelegate_(self)
 		_NSWindow.setContentBorderThickness_forEdge_(27, 1)
-		try:
-			# on 10.7+ full screen support
-			self.w.getNSWindow().setCollectionBehavior_(128)  # NSWindowCollectionBehaviorFullScreenPrimary
-		except:
-			pass
-
+		self.w.getNSWindow().setCollectionBehavior_(NSWindowCollectionBehaviorFullScreenPrimary)
+		
 		# the code editor
 		self.codeView = CodeEditor((0, 0, -0, -0))
 		self.codeView.getNSTextView().bind_toObject_withKeyPath_options_("value", self, "document.text", {NSContinuouslyUpdatesValueBindingOption:True})
