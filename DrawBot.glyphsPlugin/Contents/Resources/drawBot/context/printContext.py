@@ -1,4 +1,3 @@
-from __future__ import absolute_import, print_function
 import AppKit
 from fontTools.pens.basePen import AbstractPen
 
@@ -90,6 +89,10 @@ class PrintContext(BaseContext):
 
     def _printImage(self, pdf=None):
         print("printImage %s" % pdf)
+
+    def _linkURL(self, url, xywh):
+        x, y, w, h = xywh
+        print("linkURL %s %s %s %s %s" % (url, x, y, w, h))
 
     def _linkDestination(self, name, xy):
         x, y = xy

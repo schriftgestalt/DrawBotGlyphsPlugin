@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import Quartz
 
 import tempfile
@@ -17,7 +15,9 @@ class GIFContext(ImageContext):
         "imageGIFDitherTransparency",
         "imageGIFRGBColorTable",
         "imageColorSyncProfileData",
-    ])
+    ]) + [
+        ("imageGIFLoop", "Boolean that indicates whether the animated gif should loop")
+    ]
 
     _delay = 10
 
@@ -46,4 +46,4 @@ class GIFContext(ImageContext):
         inputPaths = super(GIFContext, self)._writeDataToFile(data, tempPath, options)
 
         if shouldBeAnimated:
-            generateGif(inputPaths, path, self._delayData)
+            generateGif(inputPaths, path, self._delayData, options.get("imageGIFLoop", True))

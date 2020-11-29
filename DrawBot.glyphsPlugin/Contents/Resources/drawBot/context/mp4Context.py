@@ -1,11 +1,10 @@
-from __future__ import division, absolute_import, print_function
-
 import os
 import tempfile
 import shutil
+
 from drawBot.misc import warnings
 
-from .imageContext import PNGContext, getSaveImageOptions
+from .imageContext import PNGContext
 
 from .tools.mp4Tools import generateMP4
 
@@ -20,6 +19,8 @@ class MP4Context(PNGContext):
 
     _defaultFrameDuration = 1 / 10
 
+    ensureEvenPixelDimensions = True
+
     def __init__(self):
         super(MP4Context, self).__init__()
         self._frameDurations = []
@@ -30,13 +31,19 @@ class MP4Context(PNGContext):
     def _newPage(self, width, height):
         super(MP4Context, self)._newPage(width, height)
         self._frameDurations.append(self._defaultFrameDuration)
+        # https://github.com/typemytype/drawbot/issues/391
+        # draw a solid white background by default
+        # ffmpeg converts transparency to a black background color
+        self.save()
+        self.fill(1)
+        self.rect(0, 0, width, height)
+        self.restore()
 
     def _writeDataToFile(self, data, path, options):
         frameRate = round(1.0 / self._frameDurations[0], 3)
         frameDurations = set(self._frameDurations)
         if len(frameDurations) > 1:
             warnings.warn("Exporting to mp4 doesn't support varying frame durations, only the first value was used.")
-
         options["multipage"] = True
         codec = options.get("ffmpegCodec", "libx264")
         tempDir = tempfile.mkdtemp(suffix=".mp4tmp")

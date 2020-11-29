@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import AppKit
 from objc import super
 
@@ -7,7 +5,7 @@ from keyword import kwlist
 import re
 import sys
 
-from pygments.lexers import PythonLexer, get_lexer_by_name
+from pygments.lexers import Python3Lexer, get_lexer_by_name
 from pygments.token import *
 from pygments.style import Style
 from pygments.styles.default import DefaultStyle
@@ -20,12 +18,9 @@ except Exception:
 
 from vanilla import *
 from vanilla.py23 import python_method
-from fontTools.misc.py23 import unichr
-
-PY3 = sys.version_info[0] == 3
 
 from .lineNumberRulerView import LineNumberNSRulerView
-from drawBot.misc import getDefault, getFontDefault, getColorDefault, DrawBotError
+from drawBot.misc import getDefault, getFontDefault, getColorDefault, DrawBotError, nsStringLength
 from drawBot.drawBotDrawingTools import _drawBotDrawingTool
 
 
@@ -59,7 +54,7 @@ fallbackTracebackAttributes = dict(fallbackTypeAttributes)
 fallbackTracebackAttributes[AppKit.NSForegroundColorAttributeName] = AppKit.NSColor.redColor()
 
 fallbackStyles = [
-    (Token,               ''),
+    (Token,               '#000000'),
 
     (Generic.Heading,     '#813E94'),
     (Generic.Subheading,  '#1A8BAD'),
@@ -146,7 +141,7 @@ class _JumpToLineSheet(object):
 
         self.w.cancelButton = Button((-170, -30, -80, 20), "Cancel", callback=self.cancelCallback, sizeStyle="small")
         self.w.cancelButton.bind(".", ["command"])
-        self.w.cancelButton.bind(unichr(27), [])
+        self.w.cancelButton.bind(chr(27), [])
 
         self.w.okButton = Button((-70, -30, -10, 20), "OK", callback=self.okCallback, sizeStyle="small")
         self.w.setDefaultButton(self.w.okButton)
@@ -283,18 +278,22 @@ def _pythonWordCompletions(text, charRange):
         return [], 0
     keyWords = list(_drawBotDrawingTool.__all__)
     try:
-        lines = text[:charRange.location].count("\n") + 1
-        if len(text) == charRange.location:
+        lines = text.substringWithRange_((0, charRange.location))
+        lineCount = lines.count("\n") + 1
+        if text.length() == charRange.location:
             columns = None
         else:
             columns = 0
             if text:
-                while text[charRange.location - columns] != "\n":
+                while text.substringWithRange_((charRange.location - columns, 1)) != "\n":
+                    if charRange.location - columns + 1 <= 1:
+                        break
                     columns += 1
-        script = jedi.api.Script(source=text, line=lines, column=columns)
+        script = jedi.api.Script(source=text, line=lineCount, column=columns)
         keyWords += [c.name for c in script.completions()]
     except Exception:
-        pass
+        import traceback
+        traceback.print_exc()
     keyWords = [word for word in sorted(keyWords) if word.startswith(partialString)]
     return keyWords, 0
 
@@ -307,26 +306,21 @@ languagesIDEBehavior = {
         "comment": "#",
         "keywords": kwlist,
         "wordCompletions": _pythonWordCompletions,
-        "dropPathFormatting": 'u"%s"',
+        "dropPathFormatting": '%r',
         "dropPathsFormatting": '[%s]',
         "dropPathsSeperator": ", "
     },
 }
-if PY3:
-    languagesIDEBehavior["Python"]["dropPathFormatting"] = '%r'
+languagesIDEBehavior["Python 3"] = languagesIDEBehavior["Python"]
 
 downArrowSelectionDirection = 0
 upArrowSelectionDirection = 1
 
-if PY3:
-    def _floatRepr(f):
-        """In Python 3, we may get float representations that are too precise,
-        like 0.199999999999999. That is not nice for our interactive number
-        editing."""
-        return str(round(f, 8))
-else:
-    def _floatRepr(f):
-        return f
+def _floatRepr(f):
+    """In Python 3, we may get float representations that are too precise,
+    like 0.199999999999999. That is not nice for our interactive number
+    editing."""
+    return str(round(f, 8))
 
 
 class CodeNSTextView(AppKit.NSTextView):
@@ -411,8 +405,7 @@ class CodeNSTextView(AppKit.NSTextView):
         self.highlightStyleMap = dict()
 
         for token, style in styles:
-            style["color"] = _hexToNSColor(style["color"])
-            for key in "bgcolor", "border":
+            for key in "color", "bgcolor", "border":
                 style[key] = _hexToNSColor(style[key], None)
             self.highlightStyleMap[token] = style
 
@@ -507,7 +500,7 @@ class CodeNSTextView(AppKit.NSTextView):
         return False
 
     def isAutomaticTextReplacementEnabled(self):
-        return True
+        return False
 
     def isAutomaticQuoteSubstitutionEnabled(self):
         return False
@@ -536,22 +529,25 @@ class CodeNSTextView(AppKit.NSTextView):
         if self.lexer() is None:
             return
         font = getFontDefault("PyDEFont", self._fallbackFont)
-        length = len(self.string())
+        length = self.string().length()
         setAttrs = self.textStorage().setAttributes_range_
         if text.endswith("\n"):
             text = text[:-1]
         # setAttrs = self.layoutManager().addTemporaryAttributes_forCharacterRange_
         self.textStorage().beginEditing()
         totLenValue = 0
+        bigUnicodeAdd = 0
         for pos, token, value in self.lexer().get_tokens_unprocessed(text):
             style = self.highlightStyleMap.get(token)
             lenValue = len(value)
-            if location + pos + lenValue > length:
-                lenValue = length - (location + pos)
-            if lenValue > 0:
-                setAttrs(_textAttributesForStyle(style, font), (location + pos, lenValue))
+            bigUnicodeValue = nsStringLength(value)
+            if location + pos + bigUnicodeValue > length:
+                bigUnicodeValue = length - (location + pos)
+            if bigUnicodeValue > 0:
+                setAttrs(_textAttributesForStyle(style, font), (location + pos + bigUnicodeAdd, bigUnicodeValue))
                 totLenValue += lenValue
-        self.textStorage().fixFontAttributeInRange_((location, totLenValue))
+                bigUnicodeAdd += bigUnicodeValue - lenValue
+        self.textStorage().fixFontAttributeInRange_((location, totLenValue + bigUnicodeAdd))
         self.textStorage().endEditing()
 
     # key down
@@ -600,85 +596,85 @@ class CodeNSTextView(AppKit.NSTextView):
             if txt == "False":
                 self._insertTextAndRun("True", selectedRange)
                 return
-        languageData = None
-        if self.lexer():
+        lexer = self.lexer()
+        if lexer is not None:
             languageData = self.languagesIDEBehaviorForLanguage_(self.lexer().name)
-        if languageData:
-            # get the auto close map based on the given lexer
-            autoCloseMap = languageData.get("autoCloseMap", dict())
-            # try to get the prev char, fail silently
-            prevChar = ""
-            if selectedRange.location >= 1:
-                try:
-                    prevChar = self.string().substringWithRange_((selectedRange.location - 1, 1))
-                except IndexError:
-                    # fail silently
-                    pass
-            prevChar = prevChar.strip()
-            # try to get the next char, fail silently
-            nextChar = ""
-            try:
-                nextChar = self.string().substringWithRange_((selectedRange.location, 1))
-            except IndexError:
-                # fail silently
-                pass
-            nextChar = nextChar.strip()
-            if char in "\"'":
-                if prevChar != char:
-                    # special python case triple quotes
-                    triplets = ""
+            if languageData and len(event.characters()) != 0:  # don't do magic if we've got a deadkey
+                # get the auto close map based on the given lexer
+                autoCloseMap = languageData.get("autoCloseMap", dict())
+                # try to get the prev char, fail silently
+                prevChar = ""
+                if selectedRange.location >= 1:
                     try:
-                        triplets = self.string().substringWithRange_((selectedRange.location, 3))
+                        prevChar = self.string().substringWithRange_((selectedRange.location - 1, 1))
                     except IndexError:
                         # fail silently
                         pass
-                    triplets = triplets.strip()
-                    if triplets == char * 3:
-                        # jump the cursor after the triple quotes
-                        self.setSelectedRange_((selectedRange.location + 3, 0))
-                        return
-                    if nextChar == char:
-                        # jump the cursor after a quote
+                prevChar = prevChar.strip()
+                # try to get the next char, fail silently
+                nextChar = ""
+                try:
+                    nextChar = self.string().substringWithRange_((selectedRange.location, 1))
+                except IndexError:
+                    # fail silently
+                    pass
+                nextChar = nextChar.strip()
+                if char in "\"'":
+                    if prevChar != char:
+                        # special python case triple quotes
+                        triplets = ""
+                        try:
+                            triplets = self.string().substringWithRange_((selectedRange.location, 3))
+                        except IndexError:
+                            # fail silently
+                            pass
+                        triplets = triplets.strip()
+                        if triplets == char * 3:
+                            # jump the cursor after the triple quotes
+                            self.setSelectedRange_((selectedRange.location + 3, 0))
+                            return
+                        if nextChar == char:
+                            # jump the cursor after a quote
+                            self.setSelectedRange_((selectedRange.location + 1, 0))
+                            return
+                        if prevChar and (prevChar not in autoCloseMap or prevChar in "\"'") and selectedRange.length == 0:
+                            # dont auto close
+                            self.insertText_(char)
+                            return
+                # the the typed char is the same as the next char
+                # and the char is part of the auto close map
+                if char == nextChar and char in autoCloseMap.values():
+                    reverseMap = {v: k for k, v in autoCloseMap.items()}
+                    if reverseMap[char] != char:
+                        # just jump the cursor if the char is not in the reversed auto close map
+                        # adjust the cursor
                         self.setSelectedRange_((selectedRange.location + 1, 0))
                         return
-                    if prevChar and (prevChar not in autoCloseMap or prevChar in "\"'") and selectedRange.length == 0:
-                        # dont auto close
-                        self.insertText_(char)
+                # reset the next char if it part of the auto close map
+                if nextChar in autoCloseMap.values():
+                    nextChar = ""
+                # the typed char is in the auto close map
+                if char in autoCloseMap:
+                    # get the selected text
+                    selectedText = self.string().substringWithRange_(selectedRange)
+                    selectedText = selectedText.strip()
+                    # if there is no next char
+                    # or when there is a text selected
+                    if not nextChar or selectedText:
+                        # get the closing char
+                        closeChar = autoCloseMap[char]
+                        # construct text with auto closed chars
+                        toInsert = char + selectedText + closeChar
+                        # insert the text
+                        self.insertText_(toInsert)
+                        # reset the selection
+                        if not selectedText:
+                            selectedRange.location += 1
+                            selectedRange.length = 0
+                        else:
+                            selectedRange.length = nsStringLength(toInsert)
+                        self.setSelectedRange_(selectedRange)
                         return
-            # the the typed char is the same as the next char
-            # and the char is part of the auto close map
-            if char == nextChar and char in autoCloseMap.values():
-                reverseMap = {v: k for k, v in autoCloseMap.items()}
-                if reverseMap[char] != char:
-                    # just jump the cursor if the char is not in the reversed auto close map
-                    # adjust the cursor
-                    self.setSelectedRange_((selectedRange.location + 1, 0))
-                    return
-            # reset the next char if it part of the auto close map
-            if nextChar in autoCloseMap.values():
-                nextChar = ""
-            # the typed char is in the auto close map
-            if char in autoCloseMap:
-                # get the selected text
-                selectedText = self.string().substringWithRange_(selectedRange)
-                selectedText = selectedText.strip()
-                # if there is no next char
-                # or when there is a text selected
-                if not nextChar or selectedText:
-                    # get the closing char
-                    closeChar = autoCloseMap[char]
-                    # construct text with auto closed chars
-                    toInsert = char + selectedText + closeChar
-                    # insert the text
-                    self.insertText_(toInsert)
-                    # reset the selection
-                    if not selectedText:
-                        selectedRange.location += 1
-                        selectedRange.length = 0
-                    else:
-                        selectedRange.length = len(toInsert)
-                    self.setSelectedRange_(selectedRange)
-                    return
         # perform the default behaviour of the text view
         super(CodeNSTextView, self).keyDown_(event)
         selectedRange = self.selectedRange()
@@ -759,6 +755,8 @@ class CodeNSTextView(AppKit.NSTextView):
     def insertNewline_(self, sender):
         selectedRange = self.selectedRange()
         super(CodeNSTextView, self).insertNewline_(sender)
+        if self.lexer() is None:
+            return
         languageData = self.languagesIDEBehaviorForLanguage_(self.lexer().name)
         if languageData:
             leadingSpace = ""
@@ -766,6 +764,10 @@ class CodeNSTextView(AppKit.NSTextView):
             m = _whiteSpaceRE.match(line)
             if m is not None:
                 leadingSpace = m.group()
+            # strip comment
+            commentTag = languageData.get("comment")
+            if commentTag is not None:
+                line = line.split(commentTag)[0]
             line = line.strip()
             if line and line[-1] in languageData["indentWithEndOfLine"]:
                 leadingSpace += self.indent()
@@ -774,6 +776,9 @@ class CodeNSTextView(AppKit.NSTextView):
                 self.insertText_(leadingSpace)
 
     def deleteBackward_(self, sender):
+        if self.lexer() is None:
+            super(CodeNSTextView, self).deleteBackward_(sender)
+            return
         languageData = self.languagesIDEBehaviorForLanguage_(self.lexer().name)
         if languageData:
             selectedRange = self.selectedRange()
@@ -798,7 +803,7 @@ class CodeNSTextView(AppKit.NSTextView):
         if not string:
             return
         selectedRange = self.selectedRange()
-        char = string[selectedRange.location]
+        char = string.substringWithRange_((selectedRange.location, 1))
         self._balanceParenForChar(char, selectedRange.location + 1)
 
     def moveRight_(self, sender):
@@ -807,7 +812,7 @@ class CodeNSTextView(AppKit.NSTextView):
         if not string:
             return
         selectedRange = self.selectedRange()
-        char = string[selectedRange.location - 1]
+        char = string.substringWithRange_((selectedRange.location - 1, 1))
         self._balanceParenForChar(char, selectedRange.location)
 
     def moveWordLeft_(self, sender):
@@ -825,7 +830,7 @@ class CodeNSTextView(AppKit.NSTextView):
             self._arrowSelectionDirection = downArrowSelectionDirection
         if len(ranges) == 1:
             newRange = ranges[0].rangeValue()
-            testLocation = -1
+            testLocation = 0xFFFFFFFB
             if newRange.length and self._arrowSelectionDirection != downArrowSelectionDirection:
                 testLocation = self._getLeftWordRange(AppKit.NSRange(newRange.location + newRange.length, 0))
             if AppKit.NSLocationInRange(testLocation, newRange) or AppKit.NSMaxRange(newRange) == testLocation:
@@ -854,7 +859,7 @@ class CodeNSTextView(AppKit.NSTextView):
             self._arrowSelectionDirection = upArrowSelectionDirection
         if len(ranges) == 1:
             newRange = ranges[0].rangeValue()
-            testLocation = -1
+            testLocation = 0xFFFFFFFB
             if newRange.length and self._arrowSelectionDirection != upArrowSelectionDirection:
                 testLocation = self._getRightWordRange(AppKit.NSRange(newRange.location, 0))
             if AppKit.NSLocationInRange(testLocation, newRange) or AppKit.NSMaxRange(newRange) == testLocation:
@@ -886,6 +891,9 @@ class CodeNSTextView(AppKit.NSTextView):
 
     # text completion
 
+    def cancelOperation_(self, sender):
+        self.complete_(sender)
+
     def rangeForUserCompletion(self):
         charRange = super(CodeNSTextView, self).rangeForUserCompletion()
         text = self.string()
@@ -902,6 +910,8 @@ class CodeNSTextView(AppKit.NSTextView):
         return charRange
 
     def completionsForPartialWordRange_indexOfSelectedItem_(self, charRange, index):
+        if self.lexer() is None:
+            return [], 0
         languageData = self.languagesIDEBehaviorForLanguage_(self.lexer().name)
         if languageData is None:
             return [], 0
@@ -928,7 +938,7 @@ class CodeNSTextView(AppKit.NSTextView):
         location = proposedRange.location
         if granularity == AppKit.NSSelectByWord and proposedRange.length == 0 and location != 0:
             text = self.string()
-            lenText = len(text)
+            lenText = text.length()
             length = 1
             found = False
             while not found:
@@ -1071,7 +1081,7 @@ class CodeNSTextView(AppKit.NSTextView):
     def _jumpToLine(self, lineNumber):
         lines = 1
         string = self.string()
-        length = len(string)
+        length = string.length()
         tempRange = AppKit.NSMakeRange(0, length)
         found = None
         while tempRange.location < length:
@@ -1112,7 +1122,7 @@ class CodeNSTextView(AppKit.NSTextView):
         if not string:
             # no text to color
             return
-        length = len(string)
+        length = string.length()
         textStorage = self.textStorage()
         _lineStart, _lineLength = textStorage.editedRange()
         editedString = string.substringWithRange_((_lineStart, _lineLength))
@@ -1192,7 +1202,7 @@ class CodeNSTextView(AppKit.NSTextView):
         if possibleIndentStart < 0:
             return superFunc(sender)
         possibleIndent = None
-        if possibleIndentStart + possibleIndentEnd > len(string):
+        if possibleIndentStart + possibleIndentEnd > string.length():
             return superFunc(sender)
         possibleIndent = string.substringWithRange_((possibleIndentStart, possibleIndentEnd))
 
@@ -1212,8 +1222,8 @@ class CodeNSTextView(AppKit.NSTextView):
         string = self.string()
         found = None
         stack = 0
-        while location >= 0 and location < len(string):
-            c = string[location]
+        while location >= 0 and location < string.length():
+            c = string.substringWithRange_((location, 1))
             if c == char:
                 stack += 1
             elif stack != 0 and c == matchChar:
@@ -1306,7 +1316,7 @@ class CodeNSTextView(AppKit.NSTextView):
     @python_method
     def _getRightWordRange(self, newRange):
         text = self.string()
-        lenText = len(text)
+        lenText = text.length()
         location = newRange.location + newRange.length
         if location >= lenText:
             return lenText
@@ -1389,7 +1399,7 @@ class CodeEditor(TextEditor):
             except Exception:
                 codeAttr["lexer"] = None
         if codeAttr["lexer"] is None:
-            codeAttr["lexer"] = PythonLexer()
+            codeAttr["lexer"] = Python3Lexer(encoding='utf-8')
         self.setLexer(codeAttr["lexer"])
         if codeAttr["highlightStyle"] is None:
             codeAttr["highlightStyle"] = styleFromDefault()
@@ -1405,10 +1415,9 @@ class CodeEditor(TextEditor):
 
         if codeAttr["showlineNumbers"] is None:
             codeAttr["showlineNumbers"] = True
+        ruler = LineNumberNSRulerView.alloc().init()
+        ruler.setClientView_(self.getNSTextView())
         scollView = self.getNSScrollView()
-        # changed for Glyphs version
-        ruler = LineNumberNSRulerView.alloc().initWithScrollView_(scollView)
-        # end change
         scollView.setVerticalRulerView_(ruler)
         scollView.setHasHorizontalRuler_(False)
         scollView.setHasVerticalRuler_(codeAttr["showlineNumbers"])
@@ -1519,4 +1528,4 @@ class OutPutEditor(TextEditor):
         self.getNSTextView().display()
 
     def scrollToEnd(self):
-        self.getNSTextView().scrollRangeToVisible_((len(self.get()), 0))
+        self.getNSTextView().scrollRangeToVisible_((self.getNSTextView().string().length(), 0))
