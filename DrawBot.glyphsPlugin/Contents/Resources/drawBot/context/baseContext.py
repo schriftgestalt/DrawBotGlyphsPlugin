@@ -1194,8 +1194,8 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
         if isinstance(txt, FormattedString):
             self._attributedString.appendAttributedString_(txt.getNSObject())
             return
-        elif not isinstance(txt, (str, FormattedString)):
-            raise TypeError("expected 'str' or 'FormattedString', got '%s'" % type(txt).__name__)
+        elif not isinstance(txt, (unicode, FormattedString)):
+            raise TypeError("expected 'unicode' or 'FormattedString', got '%s'" % type(txt).__name__)
         attributes = {}
         if self._font:
             font = AppKit.NSFont.fontWithName_size_(self._font, self._fontSize)
@@ -1355,7 +1355,7 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
         if isinstance(txt, self.__class__):
             new.getNSObject().appendAttributedString_(txt.getNSObject())
         else:
-            if not isinstance(txt, str):
+            if not isinstance(txt, unicode):
                 raise TypeError("FormattedString requires a str or unicode, got '%s'" % type(txt))
             new.append(txt)
         return new
