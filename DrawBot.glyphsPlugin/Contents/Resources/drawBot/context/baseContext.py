@@ -31,6 +31,11 @@ _LINECAPSTYLESMAP = dict(
     round=Quartz.kCGLineCapRound,
 )
 
+# Compatibility with pyhton 2 in Glyphs 2
+try:
+    CoreText.kCTTrackingAttributeName
+except:
+    CoreText.kCTTrackingAttributeName = "CTTracking"
 
 def _tryInstallFontFromFontName(fontName):
     from drawBot.drawBotDrawingTools import _drawBotDrawingTool
