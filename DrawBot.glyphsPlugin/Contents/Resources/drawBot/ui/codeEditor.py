@@ -106,7 +106,7 @@ def styleFromDefault():
     for key, value in tokens.items():
         token = string_to_tokentype(key)
         if value and not value.startswith("#"):
-            value = "#%s" % value
+            value = "#" + value
         styles[token] = value
     style = type('DrawBotStyle', (Style,), dict(styles=styles))
     #style.background_color = _NSColorToHexString(getColorDefault("PyDEBackgroundColor", fallbackBackgroundColor))
