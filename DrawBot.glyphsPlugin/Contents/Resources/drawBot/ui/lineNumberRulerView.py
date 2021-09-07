@@ -20,7 +20,7 @@ class LineNumberNSRulerView(NSRulerView):
     def init(self):
         self = super(LineNumberNSRulerView, self).init()
         self._font = NSFont.labelFontOfSize_(NSFont.systemFontSizeForControlSize_(NSMiniControlSize))
-        self._textColor = NSColor.colorWithCalibratedWhite_alpha_(.42, 1)
+        self._textColor = NSColor.secondaryLabelColor()
         self._rulerBackgroundColor = None
 
         self._lineIndices = None

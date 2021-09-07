@@ -170,6 +170,10 @@ def _hexToNSColor(color, default=fallbackTextColor):
         return default
     if len(color) != 6:
         return default
+    if color == "000000":
+        return fallbackTextColor
+    if color == "ffffff":
+        return fallbackBackgroundColor
     r = int(color[0:2], 16) / 255.
     g = int(color[2:4], 16) / 255.
     b = int(color[4:6], 16) / 255.
