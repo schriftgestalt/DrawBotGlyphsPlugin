@@ -1025,16 +1025,16 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
     _cmykColorClass = CMYKColor
 
     _textAlignMap = dict(
-        center=AppKit.NSCenterTextAlignment,
-        left=AppKit.NSLeftTextAlignment,
-        right=AppKit.NSRightTextAlignment,
-        justified=AppKit.NSJustifiedTextAlignment,
+        center=AppKit.NSTextAlignmentCenter,
+        left=AppKit.NSTextAlignmentLeft,
+        right=AppKit.NSTextAlignmentRight,
+        justified=AppKit.NSTextAlignmentJustified,
     )
 
     _textTabAlignMap = dict(
-        center=AppKit.NSCenterTextAlignment,
-        left=AppKit.NSLeftTextAlignment,
-        right=AppKit.NSRightTextAlignment,
+        center=AppKit.NSTextAlignmentCenter,
+        left=AppKit.NSTextAlignmentLeft,
+        right=AppKit.NSTextAlignmentRight,
     )
 
     _textUnderlineMap = dict(
