@@ -14,10 +14,12 @@ class DrawBotPlugin(GeneralPlugin):
 	@objc.python_method
 	def settings(self):
 		self.name = Glyphs.localize({'en': 'DrawBot'})
+
 	@objc.python_method
 	def start(self):
 		newMenuItem = NSMenuItem("New Drawbot", self.newDocument_)
 		Glyphs.menu[FILE_MENU].insert(1, newMenuItem)
+		sys.path.append(os.path.dirname(__file__))
 
 	def newDocument_(self, sender):
 		newDoc = DrawBotDocument.new()
