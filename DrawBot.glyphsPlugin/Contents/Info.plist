@@ -13,9 +13,9 @@
 	<key>CFBundleName</key>
 	<string>DrawBot</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.0.5</string>
+	<string>0.0.6</string>
 	<key>CFBundleVersion</key>
-	<string>8</string>
+	<string>9</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
