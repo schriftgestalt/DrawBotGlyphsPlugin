@@ -54,7 +54,7 @@ class DrawBotDocument (NSDocument):
 	# 	pass
 	
 	def dataRepresentationOfType_(self, aType):
-		if len(self.text) > 0:
+		if self.text and len(self.text) > 0:
 			return NSString.stringWithString_(self.text).dataUsingEncoding_(NSUTF8StringEncoding)
 		else:
 			NSdata.data()
