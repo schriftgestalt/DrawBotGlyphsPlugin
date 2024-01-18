@@ -1247,7 +1247,7 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
             fontAttributes = {}
             if coreTextFontFeatures:
                 fontAttributes[CoreText.kCTFontFeatureSettingsAttribute] = coreTextFontFeatures
-                if macOSVersion < "10.13":
+                if macOSVersion < 10.13:
                     # fallback for macOS < 10.13:
                     fontAttributes[CoreText.NSFontFeatureSettingsAttribute] = nsFontFeatures
             if coreTextFontVariations:
@@ -1330,7 +1330,7 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
             para.setParagraphSpacing_(self._paragraphBottomSpacing)
 
         if self._tracking is not None:
-            if macOSVersion < "10.12":
+            if macOSVersion < 10.12:
                 attributes[AppKit.NSKernAttributeName] = self._tracking
             else:
                 attributes[CoreText.kCTTrackingAttributeName] = self._tracking

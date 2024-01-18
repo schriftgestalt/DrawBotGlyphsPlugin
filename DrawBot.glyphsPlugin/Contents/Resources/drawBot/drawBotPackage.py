@@ -2,7 +2,7 @@ import os
 import shutil
 import attr
 from plistlib import readPlist, writePlist
-from distutils.version import LooseVersion
+# from distutils.version import LooseVersion
 import tempfile
 
 from drawBot.drawBotSettings import __version__
@@ -32,7 +32,7 @@ DrawBot support for .drawbot packages.
 
 """
 
-drawBotVersion = LooseVersion(__version__)
+drawBotVersion = __version__
 
 
 @attr.s(slots=True)
@@ -104,11 +104,11 @@ class DrawBotPackage(object):
     def run(self):
         """
         Execute the .drawBot package.
-        Return if executing was succesfull with a report on failure.
+        Return if executing was successful with a report on failure.
         """
         # check if the package can run in this version of DrawBot
-        if LooseVersion(self.info.requiresVersion) > drawBotVersion:
-            return False, "Requires a newer version of DrawBot (%s)." % self.info.requiresVersion
+        #if LooseVersion(self.info.requiresVersion) > drawBotVersion:
+        #    return False, "Requires a newer version of DrawBot (%s)." % self.info.requiresVersion
         # get the main scriptin path
         path = self.mainScriptPath()
         if path is None:
