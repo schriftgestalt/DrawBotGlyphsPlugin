@@ -106,7 +106,7 @@ def styleFromDefault():
     for key, value in tokens.items():
         token = string_to_tokentype(key)
         if value and not value.startswith("#"):
-            value = "#" + value
+            value = "#%s" % value
         styles[token] = value
     style = type('DrawBotStyle', (Style,), dict(styles=styles))
     #style.background_color = _NSColorToHexString(getColorDefault("PyDEBackgroundColor", fallbackBackgroundColor))
@@ -125,8 +125,8 @@ def outputTextAttributesForStyles(styles=None, isError=False):
     for key in (AppKit.NSForegroundColorAttributeName, AppKit.NSUnderlineColorAttributeName):
         if key in attr:
             attr[key] = _hexToNSColor(attr[key])
-    if AppKit.NSForegroundColorAttributeName not in attr:
-        attr[AppKit.NSForegroundColorAttributeName] = fallbackTextColor
+    #if AppKit.NSForegroundColorAttributeName not in attr:
+    #    attr[AppKit.NSForegroundColorAttributeName] = fallbackTextColor
     return attr
 
 
@@ -293,8 +293,8 @@ def _pythonWordCompletions(text, charRange):
                     if charRange.location - columns + 1 <= 1:
                         break
                     columns += 1
-        script = jedi.api.Script(source=text, line=lineCount, column=columns)
-        keyWords += [c.name for c in script.completions()]
+        script = jedi.api.Script(code=text)
+        keyWords += [c.name for c in script.complete(line=lineCount, column=columns)]
     except Exception:
         import traceback
         traceback.print_exc()
@@ -958,7 +958,7 @@ class CodeNSTextView(AppKit.NSTextView):
             found = False
             while not found:
                 length += 1
-                if location + length >= lenText:
+                if location + length > lenText:
                     found = True
                 else:
                     c = text.substringWithRange_((location, length))[-1]
@@ -1185,10 +1185,10 @@ class CodeNSTextView(AppKit.NSTextView):
                 numberStyle = self.highlightStyleMap.get(Comment)
                 if numberStyle:
                     ruler.setTextColor_(numberStyle["color"])
-            if hasattr(ruler, "setRulerBackgroundColor_"):
-                styles = self.highlightStyle()
-                #backgroundColor = _hexStringToNSColor(styles.background_color, self._fallbackBackgroundColor)
-                #ruler.setRulerBackgroundColor_(backgroundColor)
+            #if hasattr(ruler, "setRulerBackgroundColor_"):
+            #    styles = self.highlightStyle()
+            #    backgroundColor = _hexStringToNSColor(styles.background_color, self._fallbackBackgroundColor)
+            #    ruler.setRulerBackgroundColor_(backgroundColor)
 
     @python_method
     def _deleteIndentation(self, sender, isForward, superFunc):

@@ -6,9 +6,11 @@ import math
 import os
 
 from fontTools.pens.basePen import BasePen
+from fontTools.ttLib import TTFont, TTLibError
 
 from drawBot.misc import DrawBotError, cmyk2rgb, warnings, transformationAtCenter
 from drawBot.macOSVersion import macOSVersion
+from drawBot.misc import memoize
 
 from .tools import openType
 from .tools import variation
@@ -26,11 +28,6 @@ _LINECAPSTYLESMAP = dict(
     square=Quartz.kCGLineCapSquare,
     round=Quartz.kCGLineCapRound,
 )
-
-
-def _tryInstallFontFromFontName(fontName):
-    from drawBot.drawBotDrawingTools import _drawBotDrawingTool
-    return _drawBotDrawingTool._tryInstallFontFromFontName(fontName)
 
 
 # context specific attributes
@@ -342,7 +339,7 @@ class BezierPath(BasePen, SVGContextPropertyMixin, ContextPropertyMixin):
         if doClose:
             self.closePath()
 
-    def text(self, txt, offset=None, font=_FALLBACKFONT, fontSize=10, align=None):
+    def text(self, txt, offset=None, font=_FALLBACKFONT, fontSize=10, align=None, fontNumber=0):
         """
         Draws a `txt` with a `font` and `fontSize` at an `offset` in the bezier path.
         If a font path is given the font will be installed and used directly.
@@ -360,7 +357,7 @@ class BezierPath(BasePen, SVGContextPropertyMixin, ContextPropertyMixin):
             raise DrawBotError("align must be %s" % (", ".join(BaseContext._textAlignMap.keys())))
 
         context = BaseContext()
-        context.font(font, fontSize)
+        context.font(font, fontSize, fontNumber)
         attributedString = context.attributedString(txt, align)
         if offset:
             x, y = offset
@@ -369,7 +366,7 @@ class BezierPath(BasePen, SVGContextPropertyMixin, ContextPropertyMixin):
         for subTxt, box in makeTextBoxes(attributedString, (x, y), align=align, plainText=not isinstance(txt, FormattedString)):
             self.textBox(subTxt, box, font=font, fontSize=fontSize, align=align)
 
-    def textBox(self, txt, box, font=_FALLBACKFONT, fontSize=10, align=None, hyphenation=None):
+    def textBox(self, txt, box, font=_FALLBACKFONT, fontSize=10, align=None, hyphenation=None, fontNumber=0):
         """
         Draws a `txt` with a `font` and `fontSize` in a `box` in the bezier path.
         If a font path is given the font will be installed and used directly.
@@ -389,7 +386,7 @@ class BezierPath(BasePen, SVGContextPropertyMixin, ContextPropertyMixin):
         if align and align not in BaseContext._textAlignMap.keys():
             raise DrawBotError("align must be %s" % (", ".join(BaseContext._textAlignMap.keys())))
         context = BaseContext()
-        context.font(font, fontSize)
+        context.font(font, fontSize, fontNumber)
         context.hyphenation(hyphenation)
 
         path, (x, y) = context._getPathForFrameSetter(box)
@@ -489,7 +486,9 @@ class BezierPath(BasePen, SVGContextPropertyMixin, ContextPropertyMixin):
 
     def bounds(self):
         """
-        Return the bounding box of the path.
+        Return the bounding box of the path in the form
+        `(x minimum, y minimum, x maximum, y maximum)`` or,
+        in the case of empty path `None`.
         """
         if self._path.isEmpty():
             return None
@@ -498,7 +497,9 @@ class BezierPath(BasePen, SVGContextPropertyMixin, ContextPropertyMixin):
 
     def controlPointBounds(self):
         """
-        Return the bounding box of the path including the offcurve points.
+        Return the bounding box of the path including the offcurve points
+        in the form `(x minimum, y minimum, x maximum, y maximum)`` or,
+        in the case of empty path `None`.
         """
         (x, y), (w, h) = self._path.controlPointBounds()
         return x, y, x + w, y + h
@@ -807,7 +808,7 @@ class BezierPath(BasePen, SVGContextPropertyMixin, ContextPropertyMixin):
 
 class Color(object):
 
-    colorSpace = AppKit.NSColorSpace.genericRGBColorSpace
+    colorSpace = AppKit.NSColorSpace.genericRGBColorSpace()
 
     def __init__(self, r=None, g=None, b=None, a=1):
         self._color = None
@@ -821,7 +822,7 @@ class Color(object):
             self._color = AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(r, r, r, g)
         else:
             self._color = AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, a)
-        self._color = self._color.colorUsingColorSpace_(self.colorSpace())
+        self._color = self._color.colorUsingColorSpace_(self.colorSpace)
 
     def set(self):
         self._color.set()
@@ -858,7 +859,7 @@ class Color(object):
 
 class CMYKColor(Color):
 
-    colorSpace = AppKit.NSColorSpace.genericCMYKColorSpace
+    colorSpace = AppKit.NSColorSpace.genericCMYKColorSpace()
 
     def __init__(self, c=None, m=None, y=None, k=None, a=1):
         if c is None:
@@ -867,7 +868,7 @@ class CMYKColor(Color):
             self._color = c
         else:
             self._color = AppKit.NSColor.colorWithDeviceCyan_magenta_yellow_black_alpha_(c, m, y, k, a)
-        self._color = self._color.colorUsingColorSpace_(self.colorSpace())
+        self._color = self._color.colorUsingColorSpace_(self.colorSpace)
         self._cmyka = c, m, y, k, a
 
 
@@ -973,12 +974,11 @@ def makeTextBoxes(attributedString, xy, align, plainText):
             width += extraPadding
             originX = 0
             if para is not None:
-                if para.alignment() == AppKit.NSCenterTextAlignment:
+                if para.alignment() == AppKit.NSTextAlignmentCenter:
                     originX -= width * .5
-                elif para.alignment() == AppKit.NSRightTextAlignment:
+                elif para.alignment() == AppKit.NSTextAlignmentRight:
                     originX = -width
 
-            attributedSubstring
             if attributedSubstring.string()[-1] in ["\n", "\r"]:
                 attributedSubstring = attributedSubstring.mutableCopy()
                 attributedSubstring.deleteCharactersInRange_((rng.length - 1, 1))
@@ -1049,10 +1049,29 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
         # byWord=0x8000 # AppKit.NSUnderlineByWord,
     )
 
+    _textstrikethroughMap = dict(
+        single=AppKit.NSUnderlineStyleSingle,
+        thick=AppKit.NSUnderlineStyleThick,
+        double=AppKit.NSUnderlineStyleDouble,
+        # solid=AppKit.NSUnderlinePatternSolid,
+        # dotted=AppKit.NSUnderlinePatternDot,
+        # dashed=AppKit.NSUnderlinePatternDash,
+        # dotDashed=AppKit.NSUnderlinePatternDashDot,
+        # dotDotted=AppKit.NSUnderlinePatternDashDotDot,
+        # byWord=0x8000 # AppKit.NSUnderlineByWord,
+    )
+
+    _writingDirectionMap = dict(
+        LTR=AppKit.NSWritingDirectionLeftToRight,
+        RTL=AppKit.NSWritingDirectionRightToLeft
+    )
+
     _formattedAttributes = dict(
         font=_FALLBACKFONT,
         fallbackFont=None,
+        fallbackFontNumber=0,
         fontSize=10,
+        fontNumber=0,
 
         fill=(0, 0, 0),
         cmykFill=None,
@@ -1065,6 +1084,7 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
         tracking=None,
         baselineShift=None,
         underline=None,
+        strikethrough=None,
         url=None,
         openTypeFeatures=dict(),
         fontVariations=dict(),
@@ -1076,6 +1096,7 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
         paragraphBottomSpacing=None,
 
         language=None,
+        writingDirection=None,
     )
 
     def __init__(self, txt=None, **kwargs):
@@ -1097,6 +1118,19 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
                 self._setAttribute(key, value)
             self._setColorAttributes(attributes)
 
+    def textProperties(self):
+        """
+        Return a dict with all current stylistic text properties.
+        """
+        properties = dict()
+        for attributeName, defaultValue in self._formattedAttributes.items():
+            value = getattr(self, f"_{attributeName}", defaultValue)
+            # create new object if the value is a dictionary
+            if isinstance(value, dict):
+                value = dict(value)
+            properties[attributeName] = value
+        return properties
+
     def _setAttribute(self, attribute, value):
         method = getattr(self, attribute)
         if isinstance(value, (list, tuple)):
@@ -1111,7 +1145,7 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
         for key in colorAttributeNames:
             value = attributes.get(key)
             if value is not None:
-                setattr(self, "_%s" % key, value)
+                setattr(self, f"_{key}", value)
 
         if self._fill is not None:
             try:
@@ -1193,21 +1227,16 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
         elif not isinstance(txt, (str, FormattedString)):
             raise TypeError("expected 'str' or 'FormattedString', got '%s'" % type(txt).__name__)
         attributes = {}
+        # store all formattedString settings in a custom attributes key
+        attributes["drawBot.formattedString.properties"] = self.textProperties()
+        attributes[AppKit.NSLigatureAttributeName] = 1  # https://github.com/typemytype/drawbot/issues/427
         if self._font:
-            font = AppKit.NSFont.fontWithName_size_(self._font, self._fontSize)
-            if font is None:
-                ff = self._fallbackFont
-                if ff is None:
-                    ff = _FALLBACKFONT
-                warnings.warn("font: '%s' is not installed, back to the fallback font: '%s'" % (self._font, ff))
-                font = AppKit.NSFont.fontWithName_size_(ff, self._fontSize)
+            font = self._getNSFontWithFallback()
             coreTextFontFeatures = []
             nsFontFeatures = []  # fallback for macOS < 10.13
             if self._openTypeFeatures:
-                # store openTypeFeatures in a custom attributes key
-                attributes["drawbot.openTypeFeatures"] = dict(self._openTypeFeatures)
                 # get existing openTypeFeatures for the font
-                existingOpenTypeFeatures = openType.getFeatureTagsForFontName(self._font)
+                existingOpenTypeFeatures = openType.getFeatureTagsForFont(font)
                 # sort features by their on/off state
                 # set all disabled features first
                 orderedOpenTypeFeatures = sorted(self._openTypeFeatures.items(), key=lambda kv: kv[1])
@@ -1230,20 +1259,8 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
                         # The value 0 means kerning is disabled.
                         attributes[AppKit.NSKernAttributeName] = 0
 
-            coreTextFontVariations = dict()
-            if self._fontVariations:
-                existingAxes = variation.getVariationAxesForFontName(self._font)
-                for axis, value in self._fontVariations.items():
-                    if axis in existingAxes:
-                        existinsAxis = existingAxes[axis]
-                        # clip variation value within the min max value
-                        if value < existinsAxis["minValue"]:
-                            value = existinsAxis["minValue"]
-                        if value > existinsAxis["maxValue"]:
-                            value = existinsAxis["maxValue"]
-                        coreTextFontVariations[variation.convertVariationTagToInt(axis)] = value
-                    else:
-                        warnings.warn("variation axis '%s' not available for '%s'" % (axis, self._font))
+            coreTextFontVariations = variation.getFontVariationAttributes(font, self._fontVariations)
+
             fontAttributes = {}
             if coreTextFontFeatures:
                 fontAttributes[CoreText.kCTFontFeatureSettingsAttribute] = coreTextFontFeatures
@@ -1253,7 +1270,10 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
             if coreTextFontVariations:
                 fontAttributes[CoreText.NSFontVariationAttribute] = coreTextFontVariations
             if self._fallbackFont:
-                fontAttributes[CoreText.NSFontCascadeListAttribute] = [AppKit.NSFontDescriptor.fontDescriptorWithName_size_(self._fallbackFont, self._fontSize)]
+                fallbackFont = getNSFontFromNameOrPath(self._fallbackFont, self._fontSize, self._fallbackFontNumber)
+                if fallbackFont is not None:
+                    fallbackFontDescriptor = fallbackFont.fontDescriptor()
+                    fontAttributes[CoreText.NSFontCascadeListAttribute] = [fallbackFontDescriptor]
             fontDescriptor = font.fontDescriptor()
             fontDescriptor = fontDescriptor.fontDescriptorByAddingAttributes_(fontAttributes)
             font = AppKit.NSFont.fontWithDescriptor_size_(fontDescriptor, self._fontSize)
@@ -1338,13 +1358,31 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
             attributes[AppKit.NSBaselineOffsetAttributeName] = self._baselineShift
         if self._underline in self._textUnderlineMap:
             attributes[AppKit.NSUnderlineStyleAttributeName] = self._textUnderlineMap[self._underline]
+        if self._strikethrough in self._textstrikethroughMap:
+            attributes[AppKit.NSStrikethroughStyleAttributeName] = self._textstrikethroughMap[self._strikethrough]
         if self._url is not None:
             attributes[AppKit.NSLinkAttributeName] = AppKit.NSURL.URLWithString_(self._url)
         if self._language:
             attributes["NSLanguage"] = self._language
+        if self._writingDirection in self._writingDirectionMap:
+            para.setBaseWritingDirection_(self._writingDirectionMap[self._writingDirection])
+
         attributes[AppKit.NSParagraphStyleAttributeName] = para
         txt = AppKit.NSAttributedString.alloc().initWithString_attributes_(txt, attributes)
         self._attributedString.appendAttributedString_(txt)
+
+    def _getNSFontWithFallback(self):
+        font = getNSFontFromNameOrPath(self._font, self._fontSize, self._fontNumber)
+        if font is None:
+            ff = self._fallbackFont
+            ffNumber = self._fallbackFontNumber
+            if ff is None:
+                ff = _FALLBACKFONT
+                ffNumber = 0
+            fontNumberString = f" fontNumber={self._fontNumber}" if self._fontNumber else ""
+            warnings.warn(f"font: '{self._font}'{fontNumberString} can't be found, using the fallback font '{ff}'")
+            font = getNSFontFromNameOrPath(ff, self._fontSize, ffNumber)
+        return font
 
     def __add__(self, txt):
         new = self.copy()
@@ -1388,7 +1426,10 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
                 length = 0
 
             rng = location, length
-            attributes = {key: getattr(self, "_%s" % key) for key in self._formattedAttributes}
+            if textLength == 0:
+                attributes = self.textProperties()
+            else:
+                attributes, _ = self._attributedString.attribute_atIndex_effectiveRange_("drawBot.formattedString.properties", location + length - 1, None)
             new = self.__class__(**attributes)
             try:
                 new._attributedString = self._attributedString.attributedSubstringFromRange_(rng)
@@ -1405,10 +1446,10 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
     def __repr__(self):
         return self._attributedString.string()
 
-    def font(self, font, fontSize=None):
+    def font(self, fontNameOrPath, fontSize=None, fontNumber=0):
         """
         Set a font with the name of the font.
-        If a font path is given the font will be installed and used directly.
+        If a font path is given the font will used directly.
         Optionally a `fontSize` can be set directly.
         The default font, also used as fallback font, is 'LucidaGrande'.
         The default `fontSize` is 10pt.
@@ -1418,26 +1459,33 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
         The font name is returned, which is handy when the font was loaded
         from a path.
         """
-        font = _tryInstallFontFromFontName(font)
-        font = str(font)
-        self._font = font
+        self._font = fontNameOrPath
         if fontSize is not None:
             self._fontSize = fontSize
-        return font
+        self._fontNumber = fontNumber
+        font = getNSFontFromNameOrPath(fontNameOrPath, fontSize or 10, fontNumber)
+        return getFontName(font)
 
-    def fallbackFont(self, font):
+    def fontNumber(self, fontNumber):
+        self._fontNumber = fontNumber
+
+    def fallbackFont(self, fontNameOrPath, fontNumber=0):
         """
         Set a fallback font, used whenever a glyph is not available in the normal font.
         If a font path is given the font will be installed and used directly.
         """
-        if font:
-            font = _tryInstallFontFromFontName(font)
-            font = str(font)
-            testFont = AppKit.NSFont.fontWithName_size_(font, self._fontSize)
+        fontName = None
+        if fontNameOrPath is not None:
+            testFont = getNSFontFromNameOrPath(fontNameOrPath, 10, fontNumber)
             if testFont is None:
-                raise DrawBotError("Fallback font '%s' is not available" % font)
-        self._fallbackFont = font
-        return font
+                raise DrawBotError(f"Fallback font '{fontNameOrPath}' is not available")
+            fontName = getFontName(fontName)
+        self._fallbackFont = fontNameOrPath
+        self._fallbackFontNumber = fontNumber
+        return fontName
+
+    def fallbackFontNumber(self, fontNumber):
+        self._fallbackFontNumber = fontNumber
 
     def fontSize(self, fontSize):
         """
@@ -1527,6 +1575,13 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
         """
         self._underline = underline
 
+    def strikethrough(self, strikethrough):
+        """
+        Set the strikethrough value.
+        Underline must be `single`, `thick`, `double` or `None`.
+        """
+        self._strikethrough = strikethrough
+
     def url(self, url):
         """
         set the url value.
@@ -1573,17 +1628,16 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
             self._openTypeFeatures.update(features)
         return dict(self._openTypeFeatures)
 
-    def listOpenTypeFeatures(self, fontName=None):
+    def listOpenTypeFeatures(self, fontNameOrPath=None, fontNumber=0):
         """
         List all OpenType feature tags for the current font.
 
-        Optionally a `fontName` can be given. If a font path is given the font will be installed and used directly.
+        Optionally a `fontNameOrPath` can be given. If a font path is given the font will be used directly.
         """
-        if fontName:
-            fontName = _tryInstallFontFromFontName(fontName)
-        else:
-            fontName = self._font
-        return openType.getFeatureTagsForFontName(fontName)
+        if fontNameOrPath is None:
+            fontNameOrPath = self._font
+        font = getNSFontFromNameOrPath(fontNameOrPath, 10, fontNumber)
+        return openType.getFeatureTagsForFont(font)
 
     def fontVariations(self, *args, **axes):
         """
@@ -1609,35 +1663,52 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
         currentVariation.update(self._fontVariations)
         return currentVariation
 
-    def listFontVariations(self, fontName=None):
+    def listFontVariations(self, fontNameOrPath=None, fontNumber=0):
         """
         List all variation axes for the current font.
 
         Returns a dictionary with all axis tags instance with an info dictionary with the following keys: `name`, `minValue` and `maxValue`.
         For non variable fonts an empty dictionary is returned.
 
-        Optionally a `fontName` can be given. If a font path is given the font will be installed and used directly.
+        Optionally a `fontNameOrPath` can be given. If a font path is given the font will be used directly.
         """
-        if fontName:
-            fontName = _tryInstallFontFromFontName(fontName)
-        else:
-            fontName = self._font
-        return variation.getVariationAxesForFontName(fontName)
+        if fontNameOrPath is None:
+            fontNameOrPath = self._font
+        font = getNSFontFromNameOrPath(fontNameOrPath, 10, fontNumber)
+        return variation.getVariationAxesForFont(font)
 
-    def listNamedInstances(self, fontName=None):
+    def fontNamedInstance(self, name, fontNameOrPath=None):
+        """
+        Set a font with `name` of a named instance.
+        The `name` of the named instance must be listed in `listNamedInstances()`,
+
+        Optionally a `fontNameOrPath` can be given. If a font path is given that `fontNameOrPath` will be set.
+        """
+        if fontNameOrPath:
+            self.font(fontNameOrPath)
+        instances = self.listNamedInstances()
+        if name in instances:
+            self.fontVariations(**instances[name])
+        else:
+            font = getNSFontFromNameOrPath(self._font, self._fontSize, self._fontNumber)
+            fontName = getFontName(font)
+            if fontName is None:
+                fontName = self._font
+            raise DrawBotError(f"Can not find instance with name: '{name}' for '{fontName}'.")
+
+    def listNamedInstances(self, fontNameOrPath=None, fontNumber=0):
         """
         List all named instances from a variable font for the current font.
 
         Returns a dictionary with all named instance as postscript names with their location.
         For non variable fonts an empty dictionary is returned.
 
-        Optionally a `fontName` can be given. If a font path is given the font will be installed and used directly.
+        Optionally a `fontNameOrPath` can be given. If a font path is given the font will be used directly.
         """
-        if fontName:
-            fontName = _tryInstallFontFromFontName(fontName)
-        else:
-            fontName = self._font
-        return variation.getNamedInstancesForFontName(fontName)
+        if fontNameOrPath is None:
+            fontNameOrPath = self._font
+        font = getNSFontFromNameOrPath(fontNameOrPath, 10, fontNumber)
+        return variation.getNamedInstancesForFont(font)
 
     def tabs(self, *tabs):
         """
@@ -1769,6 +1840,12 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
         """
         self._language = language
 
+    def writingDirection(self, direction):
+        """
+        Set the writing direction: `None`, `'LTR'` or `'RTL'`.
+        """
+        self._writingDirection = direction
+
     def size(self):
         """
         Return the size of the text.
@@ -1793,14 +1870,17 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
         Return a bool if the current font contains the provided `characters`.
         Characters is a string containing one or more characters.
         """
-        font = AppKit.NSFont.fontWithName_size_(self._font, self._fontSize)
+        font = self._getNSFontWithFallback()
         if font is None:
             return False
-        result, glyphs = CoreText.CTFontGetGlyphsForCharacters(font, characters, None, len(characters))
+        # Issue 524: we need to pass the number of UTF-16 characters or it won't work for
+        # characters > U+FFFF
+        count = len(characters.encode("utf-16-be")) // 2
+        result, glyphs = CoreText.CTFontGetGlyphsForCharacters(font, characters, None, count)
         return result
 
     def fontContainsGlyph(self, glyphName):
-        font = AppKit.NSFont.fontWithName_size_(self._font, self._fontSize)
+        font = self._getNSFontWithFallback()
         if font is None:
             return False
         glyph = font.glyphWithName_(glyphName)
@@ -1810,69 +1890,56 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
         """
         Return the path to the file of the current font.
         """
-        font = AppKit.NSFont.fontWithName_size_(self._font, self._fontSize)
+        font = getNSFontFromNameOrPath(self._font, self._fontSize, self._fontNumber)
         if font is not None:
             url = CoreText.CTFontDescriptorCopyAttribute(font.fontDescriptor(), CoreText.kCTFontURLAttribute)
-            if url:
+            if url is not None:
                 return url.path()
+            elif os.path.exists(self._font):
+                # This happens for reloaded fonts: the font object can't
+                # know its file origin, because it was loaded from data.
+                return os.path.abspath(self._font)
         warnings.warn("Cannot find the path to the font '%s'." % self._font)
         return None
+
+    def fontFileFontNumber(self):
+        fontNumber = 0
+        path = self.fontFilePath()
+        if path is not None:
+            font = getNSFontFromNameOrPath(self._font, self._fontSize, self._fontNumber)
+            descriptors = getFontDescriptorsFromPath(path)
+            fontNames = [d.postscriptName() for d in descriptors]
+            try:
+                fontNumber = fontNames.index(font.fontDescriptor().postscriptName())
+            except ValueError:
+                warnings.warn(f"Cannot find the fontNumber for '{self._font}'.")
+        return fontNumber
 
     def listFontGlyphNames(self):
         """
         Return a list of glyph names supported by the current font.
         """
         from fontTools.ttLib import TTFont, TTLibError
-        from fontTools.misc.macRes import ResourceReader, ResourceError
 
         path = self.fontFilePath()
         if path is None:
             return []
+        # load the font with fontTools
+        # provide a fontNumber as lots of fonts are .ttc font files.
+        # search for the res_name_or_index for .dfont files.
+        res_name_or_index = None
+        fontNumber = None
+        ext = os.path.splitext(path)[-1].lower()
+        if ext in (".ttc", ".otc"):
+            fontNumber = self.fontFileFontNumber()
+        elif ext == ".dfont":
+            res_name_or_index = self.fontFileFontNumber() + 1
         try:
-            # load the font with fontTools
-            # provide a fontNumber as lots of fonts are .ttc font files.
-            # search for the res_name_or_index for .dfont files.
-            res_name_or_index = None
-            fontNumber = None
-            ext = os.path.splitext(path)[-1].lower()
-            if ext == ".ttc":
-                def _getPSName(source):
-                    # get PS name
-                    name = source["name"]
-                    psName = name.getName(6, 1, 0)
-                    if psName is None:
-                        psName.getName(6, 3, 1)
-                    return psName.toStr()
-
-                ttc = TTFont(path, lazy=True, fontNumber=0)
-                numFonts = ttc.reader.numFonts
-                foundPSName = False
-                for fontNumber in range(numFonts):
-                    source = TTFont(path, lazy=True, fontNumber=fontNumber)
-                    psName = _getPSName(source)
-                    if psName == self._font:
-                        foundPSName = True
-                        break
-                if not foundPSName:
-                    # fallback to the first font in the ttc.
-                    fontNumber = 0
-
-            elif ext == ".dfont":
-                try:
-                    reader = ResourceReader(path)
-                    names = reader.getNames("sfnt")
-                    if self._font in names:
-                        res_name_or_index = self._font
-                    else:
-                        res_name_or_index = names[0]
-                except ResourceError:
-                    pass
-            fontToolsFont = TTFont(path, lazy=True, fontNumber=fontNumber, res_name_or_index=res_name_or_index)
+            with TTFont(path, lazy=True, fontNumber=fontNumber, res_name_or_index=res_name_or_index) as fontToolsFont:
+                glyphNames = fontToolsFont.getGlyphOrder()
         except TTLibError:
             warnings.warn("Cannot read the font file for '%s' at the path '%s'" % (self._font, path))
             return []
-        glyphNames = fontToolsFont.getGlyphOrder()
-        fontToolsFont.close()
         # remove .notdef from glyph names
         if ".notdef" in glyphNames:
             glyphNames.remove(".notdef")
@@ -1882,55 +1949,35 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
         """
         Returns the current font ascender, based on the current `font` and `fontSize`.
         """
-        font = AppKit.NSFont.fontWithName_size_(self._font, self._fontSize)
-        if font is None:
-            ff = self._fallbackFont or _FALLBACKFONT
-            warnings.warn("font: '%s' is not installed, back to the fallback font: '%s'" % (self._font, ff))
-            font = AppKit.NSFont.fontWithName_size_(ff, self._fontSize)
+        font = self._getNSFontWithFallback()
         return font.ascender()
 
     def fontDescender(self):
         """
         Returns the current font descender, based on the current `font` and `fontSize`.
         """
-        font = AppKit.NSFont.fontWithName_size_(self._font, self._fontSize)
-        if font is None:
-            ff = self._fallbackFont or _FALLBACKFONT
-            warnings.warn("font: '%s' is not installed, back to the fallback font: '%s'" % (self._font, ff))
-            font = AppKit.NSFont.fontWithName_size_(ff, self._fontSize)
+        font = self._getNSFontWithFallback()
         return font.descender()
 
     def fontXHeight(self):
         """
         Returns the current font x-height, based on the current `font` and `fontSize`.
         """
-        font = AppKit.NSFont.fontWithName_size_(self._font, self._fontSize)
-        if font is None:
-            ff = self._fallbackFont or _FALLBACKFONT
-            warnings.warn("font: '%s' is not installed, back to the fallback font: '%s'" % (self._font, ff))
-            font = AppKit.NSFont.fontWithName_size_(ff, self._fontSize)
+        font = self._getNSFontWithFallback()
         return font.xHeight()
 
     def fontCapHeight(self):
         """
         Returns the current font cap height, based on the current `font` and `fontSize`.
         """
-        font = AppKit.NSFont.fontWithName_size_(self._font, self._fontSize)
-        if font is None:
-            ff = self._fallbackFont or _FALLBACKFONT
-            warnings.warn("font: '%s' is not installed, back to the fallback font: '%s'" % (self._font, ff))
-            font = AppKit.NSFont.fontWithName_size_(ff, self._fontSize)
+        font = self._getNSFontWithFallback()
         return font.capHeight()
 
     def fontLeading(self):
         """
         Returns the current font leading, based on the current `font` and `fontSize`.
         """
-        font = AppKit.NSFont.fontWithName_size_(self._font, self._fontSize)
-        if font is None:
-            ff = self._fallbackFont or _FALLBACKFONT
-            warnings.warn("font: '%s' is not installed, back to the fallback font: '%s'" % (self._font, ff))
-            font = AppKit.NSFont.fontWithName_size_(ff, self._fontSize)
+        font = self._getNSFontWithFallback()
         return font.leading()
 
     def fontLineHeight(self):
@@ -1940,21 +1987,17 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
         """
         if self._lineHeight is not None:
             return self._lineHeight
-        font = AppKit.NSFont.fontWithName_size_(self._font, self._fontSize)
-        if font is None:
-            ff = self._fallbackFont or _FALLBACKFONT
-            warnings.warn("font: '%s' is not installed, back to the fallback font: '%s'" % (self._font, ff))
-            font = AppKit.NSFont.fontWithName_size_(ff, self._fontSize)
+        font = self._getNSFontWithFallback()
         return font.defaultLineHeightForFont()
 
     def appendGlyph(self, *glyphNames):
         """
-        Append a glyph by his glyph name using the current `font`.
+        Append a glyph by his glyph name or glyph index using the current `font`.
         Multiple glyph names are possible.
 
         .. downloadcode:: appendGlyphFormattedString.py
 
-            size(1000, 400)
+            size(1300, 400)
             # create an empty formatted string object
             t = FormattedString()
             # set a font
@@ -1963,21 +2006,28 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
             t.fontSize(300)
             # add some glyphs by glyph name
             t.appendGlyph("A", "ampersand", "Eng", "Eng.alt")
+            # add some glyphs by glyph ID (this depends heavily on the font)
+            t.appendGlyph(50, 51)
             # draw the formatted string
             text(t, (100, 100))
+
         """
         # use a non breaking space as replacement character
         baseString = chr(0xFFFD)
         font = None
         if self._font:
-            font = AppKit.NSFont.fontWithName_size_(self._font, self._fontSize)
-        if font is None:
-            warnings.warn("font: '%s' is not installed, back to the fallback font: '%s'" % (self._font, _FALLBACKFONT))
+            font = self._getNSFontWithFallback()
+        else:
+            # Default font
             font = AppKit.NSFont.fontWithName_size_(_FALLBACKFONT, self._fontSize)
 
         # disable calt features, as this seems to be on by default
         # for both the font stored in the nsGlyphInfo as in the replacement character
         fontAttributes = {}
+        coreTextFontVariations = variation.getFontVariationAttributes(font, self._fontVariations)
+        if coreTextFontVariations:
+            fontAttributes[CoreText.NSFontVariationAttribute] = coreTextFontVariations
+
         fontAttributes[CoreText.kCTFontFeatureSettingsAttribute] = [dict(CTFeatureOpenTypeTag="calt", CTFeatureOpenTypeValue=False)]
         fontDescriptor = font.fontDescriptor()
         fontDescriptor = fontDescriptor.fontDescriptorByAddingAttributes_(fontAttributes)
@@ -1988,13 +2038,25 @@ class FormattedString(SVGContextPropertyMixin, ContextPropertyMixin):
         _openTypeFeatures = dict(self._openTypeFeatures)
         self._openTypeFeatures = dict(calt=False)
         for glyphName in glyphNames:
-            glyph = font.glyphWithName_(glyphName)
+            if isinstance(glyphName, int):
+                # glyphName is a glyph ID
+                glyph = glyphName
+            else:
+                glyph = font.glyphWithName_(glyphName)
             if glyph:
                 self.append(baseString)
                 glyphInfo = AppKit.NSGlyphInfo.glyphInfoWithGlyph_forFont_baseString_(glyph, font, baseString)
-                self._attributedString.addAttribute_value_range_(AppKit.NSGlyphInfoAttributeName, glyphInfo, (len(self) - 1, 1))
+                if glyphInfo is not None:
+                    self._attributedString.addAttribute_value_range_(AppKit.NSGlyphInfoAttributeName, glyphInfo, (len(self) - 1, 1))
+                else:
+                    warnings.warn(f"font '{font.fontName()}' has no glyph with glyph ID {glyph}")
             else:
-                warnings.warn("font '%s' has no glyph with the name '%s'" % (font.fontName(), glyphName))
+                if isinstance(glyphName, int) or glyphName == ".notdef":
+                    message = "skipping '.notdef' glyph (glyph ID 0)"
+                else:
+                    message = "font '{fontName}' has no glyph with the name '{glyphName}'"
+                warnings.warn(message.format(fontName=font.fontName(), glyphName=glyphName))
+
         self.openTypeFeatures(**_openTypeFeatures)
         self._fallbackFont = fallbackFont
 
@@ -2007,6 +2069,7 @@ class GraphicsState(object):
     def __init__(self):
         self.colorSpace = self._colorClass.colorSpace
         self.blendMode = None
+        self.opacity = 1
         self.fillColor = self._colorClass(0)
         self.strokeColor = None
         self.cmykFillColor = None
@@ -2015,6 +2078,7 @@ class GraphicsState(object):
         self.gradient = None
         self.strokeWidth = 1
         self.lineDash = None
+        self.lineDashOffset = 0
         self.lineCap = None
         self.lineJoin = None
         self.miterLimit = 10
@@ -2026,6 +2090,7 @@ class GraphicsState(object):
         new = self.__class__()
         new.colorSpace = self.colorSpace
         new.blendMode = self.blendMode
+        new.opacity = self.opacity
         if self.fillColor is not None:
             new.fillColor = self.fillColor.copy()
         else:
@@ -2048,6 +2113,7 @@ class GraphicsState(object):
         new.lineCap = self.lineCap
         if self.lineDash is not None:
             new.lineDash = list(self.lineDash)
+        new.lineDashOffset = self.lineDashOffset
         new.lineJoin = self.lineJoin
         new.miterLimit = self.miterLimit
         return new
@@ -2083,13 +2149,15 @@ class BaseContext(object):
     _textAlignMap = FormattedString._textAlignMap
     _textTabAlignMap = FormattedString._textTabAlignMap
     _textUnderlineMap = FormattedString._textUnderlineMap
+    _textstrikethroughMap = FormattedString._textstrikethroughMap
+    _writingDirectionMap = FormattedString._writingDirectionMap
 
     _colorSpaceMap = dict(
-        genericRGB=AppKit.NSColorSpace.genericRGBColorSpace,
-        adobeRGB1998=AppKit.NSColorSpace.adobeRGB1998ColorSpace,
-        sRGB=AppKit.NSColorSpace.sRGBColorSpace,
-        genericGray=AppKit.NSColorSpace.genericGrayColorSpace,
-        genericGamma22Gray=AppKit.NSColorSpace.genericGamma22GrayColorSpace,
+        genericRGB=AppKit.NSColorSpace.genericRGBColorSpace(),
+        adobeRGB1998=AppKit.NSColorSpace.adobeRGB1998ColorSpace(),
+        sRGB=AppKit.NSColorSpace.sRGBColorSpace(),
+        genericGray=AppKit.NSColorSpace.genericGrayColorSpace(),
+        genericGamma22Gray=AppKit.NSColorSpace.genericGamma22GrayColorSpace(),
     )
 
     _blendModeMap = dict(
@@ -2143,6 +2211,9 @@ class BaseContext(object):
         pass
 
     def _blendMode(self, operation):
+        pass
+
+    def _opacity(self, value):
         pass
 
     def _drawPath(self):
@@ -2206,7 +2277,7 @@ class BaseContext(object):
     def saveImage(self, path, options):
         if not self.hasPage:
             raise DrawBotError("can't save image when no page is set")
-        self._saveImage(path, options)
+        return self._saveImage(path, options)
 
     def printImage(self, pdf=None):
         self._printImage(pdf)
@@ -2282,6 +2353,10 @@ class BaseContext(object):
     def blendMode(self, operation):
         self._state.blendMode = operation
         self._blendMode(operation)
+
+    def opacity(self, value):
+        self._state.opacity = value
+        self._opacity(value)
 
     def fill(self, r, g=None, b=None, a=1):
         self._state.text.fill(r, g, b, a)
@@ -2390,20 +2465,21 @@ class BaseContext(object):
             raise DrawBotError("lineCap() argument must be 'butt', 'square' or 'round'")
         self._state.lineCap = _LINECAPSTYLESMAP[cap]
 
-    def lineDash(self, dash):
+    def lineDash(self, dash, offset):
         if dash[0] is None:
             self._state.lineDash = None
             return
         self._state.lineDash = list(dash)
+        self._state.lineDashOffset = offset
 
     def transform(self, matrix):
         self._transform(matrix)
 
-    def font(self, fontName, fontSize):
-        return self._state.text.font(fontName, fontSize)
+    def font(self, fontName, fontSize, fontNumber):
+        return self._state.text.font(fontName, fontSize, fontNumber)
 
-    def fallbackFont(self, fontName):
-        self._state.text.fallbackFont(fontName)
+    def fallbackFont(self, fontName, fontNumber=0):
+        self._state.text.fallbackFont(fontName, fontNumber)
 
     def fontSize(self, fontSize):
         self._state.text.fontSize(fontSize)
@@ -2420,6 +2496,9 @@ class BaseContext(object):
     def underline(self, underline):
         self._state.text.underline(underline)
 
+    def strikethrough(self, strikethrough):
+        self._state.text.strikethrough(strikethrough)
+
     def url(self, value):
         self._state.text.url(value)
 
@@ -2432,11 +2511,17 @@ class BaseContext(object):
     def language(self, language):
         self._state.text.language(language)
 
+    def writingDirection(self, direction):
+        self._state.text.writingDirection(direction)
+
     def openTypeFeatures(self, *args, **features):
         return self._state.text.openTypeFeatures(*args, **features)
 
     def fontVariations(self, *args, **axes):
         return self._state.text.fontVariations(*args, **axes)
+
+    def fontNamedInstance(self, name, fontNameOrPath):
+        self._state.text.fontNamedInstance(name, fontNameOrPath)
 
     def attributedString(self, txt, align=None):
         if isinstance(txt, FormattedString):
@@ -2571,6 +2656,12 @@ class BaseContext(object):
             (x, y), (w, h) = CoreText.CGPathGetPathBoundingBox(path)
         else:
             x, y, w, h = box
+            if w < 0:
+                x += w
+                w = -w
+            if h < 0:
+                y += h
+                h = -h
             path = CoreText.CGPathCreateMutable()
             CoreText.CGPathAddRect(path, None, CoreText.CGRectMake(x, y, w, h))
         return path, (x, y)
@@ -2641,3 +2732,90 @@ class BaseContext(object):
     def linkRect(self, name, xywh):
         x, y, w, h = xywh
         self._linkRect(name, (x, y, w, h))
+
+
+@memoize
+def getNSFontFromNameOrPath(fontNameOrPath, fontSize, fontNumber):
+    if not isinstance(fontNameOrPath, (str, os.PathLike)):
+        tp = type(fontNameOrPath).__name__
+        raise TypeError(
+            f"'fontNameOrPath' should be str or path-like, '{tp}' found"
+        )
+    font = _getNSFontFromNameOrPath(fontNameOrPath, fontSize, fontNumber)
+    if font is None:
+        warnings.warn(f"not font could be found for '{fontNameOrPath}'")
+    return font
+
+
+def _getNSFontFromNameOrPath(fontNameOrPath, fontSize, fontNumber):
+    if fontSize is None:
+        fontSize = 10
+    if isinstance(fontNameOrPath, str) and not fontNameOrPath.startswith("."):
+        # skip dot prefix font names, those are system fonts
+        nsFont = AppKit.NSFont.fontWithName_size_(fontNameOrPath, fontSize)
+        if nsFont is not None:
+            return nsFont
+    # load from path
+    if not os.path.exists(fontNameOrPath):
+        return None
+    fontPath = os.path.abspath(fontNameOrPath)
+    descriptors = getFontDescriptorsFromPath(fontPath)
+    if not descriptors:
+        return None
+    if not 0 <= fontNumber < len(descriptors):
+        raise IndexError(
+            f"fontNumber out of range for '{fontPath}': "
+            f"{fontNumber} not in range 0..{len(descriptors) - 1}"
+        )
+    return CoreText.CTFontCreateWithFontDescriptor(descriptors[fontNumber], fontSize, None)
+
+
+#
+# Cache for font descriptors that have been reloaded after a font file
+# changed on disk. Keys are absolute paths to font files, values are
+# (modificationTime, fontDescriptors) tuples. `fontDescriptors` is
+# None when the font was used but did not have to be reloaded, and a
+# list of font descriptors if the font has been reloaded before.
+#
+# We don't clear this cache, as the number of reloaded fonts should
+# generably be within reasonable limits, and re-reloading upon every
+# run (think Variable Sliders) is expensive.
+#
+# NOTE: It's possible to turn this into a Least Recently Used cache with
+# a maximum size, using Python 3.7's insertion order preserving dict
+# behavior, but it may not be worth the effort.
+#
+_reloadedFontDescriptors = {}
+
+
+@memoize
+def getFontDescriptorsFromPath(fontPath):
+    modTime = os.stat(fontPath).st_mtime
+    prevModTime, descriptors = _reloadedFontDescriptors.get(fontPath, (modTime, None))
+    if modTime == prevModTime:
+        if not descriptors:
+            # Load font from disk, letting the OS handle caching and loading
+            url = AppKit.NSURL.fileURLWithPath_(fontPath)
+            assert url is not None
+            descriptors = CoreText.CTFontManagerCreateFontDescriptorsFromURL(url)
+            # Nothing was reloaded, this is the general case: do not cache the
+            # descriptors globally (they are cached per newDrawing session via
+            # @memoize), only store the modification time.
+            _reloadedFontDescriptors[fontPath] = modTime, None
+    else:
+        # The font file was changed on disk since we last used it. We now load
+        # it from data explicitly, bypassing any OS cache, ensuring we will see
+        # the updated font.
+        data = AppKit.NSData.dataWithContentsOfFile_(fontPath)
+        descriptors = CoreText.CTFontManagerCreateFontDescriptorsFromData(data)
+        _reloadedFontDescriptors[fontPath] = modTime, descriptors
+    return descriptors
+
+
+def getFontName(font):
+    if font is None:
+        return None
+    fontName = CoreText.CTFontDescriptorCopyAttribute(font.fontDescriptor(), CoreText.kCTFontNameAttribute)
+    if fontName is not None:
+        fontName = str(fontName)
+    return fontName

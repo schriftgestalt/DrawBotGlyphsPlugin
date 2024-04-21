@@ -34,11 +34,16 @@ class DrawBotDocument (NSDocument):
 		You can add an observer like in the example.
 		Do all initializing here.
 		"""
-		self = super(DrawBotDocument, self).init()
-		self.text = ""
+		self = super().init()
+		self._text = ""
 		return self
 
-	
+	def text(self):
+		return self._text
+
+	def setText_(self, text):
+		self._text = text
+
 	def makeWindowControllers(self):
 		from DrawBotWindow import GlyphsDrawBotController
 		WindowController = GlyphsDrawBotController.alloc().init()

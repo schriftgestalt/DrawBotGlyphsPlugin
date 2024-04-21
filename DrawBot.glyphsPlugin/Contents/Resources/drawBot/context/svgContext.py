@@ -260,6 +260,12 @@ class SVGContext(BaseContext):
         AppKit.NSUnderlineStyleDouble: "double",
     }
 
+    _svgStrikethroughStylesMap = {
+        AppKit.NSUnderlineStyleSingle: "",
+        AppKit.NSUnderlineStyleThick: "",
+        AppKit.NSUnderlineStyleDouble: "double",
+    }
+
     indentation = " "
     fileExtensions = ["svg"]
     saveImageOptions = [
@@ -438,8 +444,9 @@ class SVGContext(BaseContext):
                 strokeColor = attributes.get(AppKit.NSStrokeColorAttributeName)
                 strokeWidth = attributes.get(AppKit.NSStrokeWidthAttributeName, self._state.strokeWidth)
                 baselineShift = attributes.get(AppKit.NSBaselineOffsetAttributeName, 0)
-                openTypeFeatures = attributes.get("drawbot.openTypeFeatures")
+                openTypeFeatures = attributes.get("drawBot.formattedString.properties", dict()).get("openTypeFeatures")
                 underline = attributes.get(AppKit.NSUnderlineStyleAttributeName)
+                strikethrough = attributes.get(AppKit.NSStrikethroughStyleAttributeName)
                 url = attributes.get(AppKit.NSLinkAttributeName)
 
                 fontName = font.fontName()
@@ -476,6 +483,12 @@ class SVGContext(BaseContext):
                     underlineStyle = self._svgUnderlineStylesMap.get(underline)
                     if underlineStyle:
                         style["text-decoration-style"] = underlineStyle
+
+                if strikethrough is not None:
+                    style["text-decoration"] = "line-through"
+                    strikethroughStyle = self._svgStrikethroughStylesMap.get(strikethrough)
+                    if strikethroughStyle:
+                        style["text-decoration-style"] = strikethroughStyle
 
                 if style:
                     spanData["style"] = self._svgStyle(**style)
@@ -565,7 +578,7 @@ class SVGContext(BaseContext):
         data = [
             ("x", 0),
             ("y", 0),
-            ("opacity", alpha),
+            ("opacity", alpha * self._state.opacity),
             ("transform", self._svgTransform(self._state.transformMatrix.translate(x, y + height).scale(1, -1))),
             ("xlink:href", "#%s" % imageID)
         ]
@@ -631,7 +644,7 @@ class SVGContext(BaseContext):
             c, a = fill
             data["fill"] = c
             if a != 1:
-                data["fill-opacity"] = a
+                data["fill-opacity"] = a * self._state.opacity
         else:
             data["fill"] = "none"
         stroke = self._svgStrokeColor()
@@ -639,9 +652,11 @@ class SVGContext(BaseContext):
             c, a = stroke
             data["stroke"] = c
             if a != 1:
-                data["stroke-opacity"] = a
+                data["stroke-opacity"] = a * self._state.opacity
             data["stroke-width"] = formatNumber(abs(self._state.strokeWidth))
         if self._state.lineDash:
+            if self._state.lineDashOffset:
+                data["stroke-dashoffset"] = self._state.lineDashOffset
             data["stroke-dasharray"] = ",".join([str(i) for i in self._state.lineDash])
         if self._state.lineJoin in self._svgLineJoinStylesMap:
             data["stroke-linejoin"] = self._svgLineJoinStylesMap[self._state.lineJoin]
@@ -665,9 +680,11 @@ class SVGContext(BaseContext):
     def _svgStyle(self, **kwargs):
         style = []
         if self._state.blendMode is not None:
-            style.append("mix-blend-mode: %s;" % self._state.blendMode)
+            style.append(f"mix-blend-mode: {self._state.blendMode};")
+        if self._state.opacity != 1:
+            style.append(f"opacity: {self._state.opacity};")
         for key, value in sorted(kwargs.items()):
-            style.append("%s: %s;" % (key, value))
+            style.append(f"{key}: {value};")
         return " ".join(style)
 
     def _linkURL(self, url, xywh):
@@ -685,39 +702,3 @@ class SVGContext(BaseContext):
         self._svgContext.newline()
         self._svgContext.endtag("a")
         self._svgContext.newline()
-
-    def installFont(self, path):
-        success, error = super(self.__class__, self).installFont(path)
-        # if path not in self._embeddedFonts:
-        #     warnings.warn("Your font will be embedded and accessibele")
-        #     self._embeddedFonts.add(path)
-
-        #     f = open(path, "r")
-        #     fontData = f.read()
-        #     f.close()
-        #     fontName = self._fontNameForPath(path)
-
-        #     ctx = self._svgContext
-        #     ctx.begintag("defs")
-        #     ctx.newline()
-        #     ctx.begintag("style", type="text/css")
-        #     ctx.newline()
-        #     ctx.write("@font-face {")
-        #     ctx.newline()
-        #     ctx.indent()
-        #     ctx.write("font-family: %s;" % fontName)
-        #     ctx.newline()
-        #     if path.startswith("http"):
-        #         ctx.write("src: url(%s');" % path)
-        #     else:
-        #         ctx.write("src: url('data:application/font-woff;charset=utf-8;base64,%s');" % base64.b64encode(fontData))
-        #     ctx.newline()
-        #     ctx.dedent()
-        #     ctx.write("}")
-        #     ctx.newline()
-        #     ctx.endtag("style")
-        #     ctx.newline()
-        #     ctx.endtag("defs")
-        #     ctx.newline()
-
-        return success, error

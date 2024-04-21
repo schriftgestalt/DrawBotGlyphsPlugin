@@ -1,7 +1,8 @@
 from Foundation import NSURL
 from AppKit import NSDragOperationNone, NSBezelBorder
 from Quartz import PDFView, PDFThumbnailView, PDFDocument
-import traceback
+from objc import super
+
 from vanilla import Group
 
 epsPasteBoardType = "CorePasteboardFlavorType 0x41494342"
@@ -41,7 +42,7 @@ class DrawBotPDFView(PDFView):
         # cmd + ` causes a traceback
         # DrawBot[15705]: -[__NSCFConstantString characterAtIndex:]: Range or index out of bounds
         try:
-            return super(DrawBotPDFView, self).performKeyEquivalent_(event)
+            return super().performKeyEquivalent_(event)
         except:
             return False
 
@@ -51,7 +52,7 @@ class DrawView(Group):
     nsViewClass = DrawBotPDFView
 
     def __init__(self, posSize):
-        super(DrawView, self).__init__(posSize)
+        super().__init__(posSize)
         pdfView = self.getNSView()
         pdfView.setAutoScales_(True)
         view = pdfView.documentView()

@@ -6,16 +6,18 @@ import math
 import os
 import random
 from collections import namedtuple
+from contextlib import contextmanager
 
 from .context import getContextForFileExt, getContextOptions, getFileExtensions, getContextOptionsDocs
-from .context.baseContext import BezierPath, FormattedString, makeTextBoxes
+from .context.baseContext import BezierPath, FormattedString, makeTextBoxes, getNSFontFromNameOrPath, getFontName
 from .context.dummyContext import DummyContext
 
 from .context.tools.imageObject import ImageObject
 from .context.tools import gifTools
 from .context.tools import openType
+from .context.tools import drawBotbuiltins
 
-from .misc import DrawBotError, warnings, VariableController, optimizePath, isPDF, isEPS, isGIF, transformationAtCenter, clearMemoizeCache
+from .misc import DrawBotError, warnings, VariableController, optimizePath, isPDF, isEPS, isGIF, transformationAtCenter, clearMemoizeCache, validateLanguageCode
 
 
 def _getmodulecontents(module, names=None):
@@ -53,26 +55,6 @@ for key, (w, h) in list(_paperSizes.items()):
     _paperSizes["%sLandscape" % key] = (h, w)
 
 
-class SavedStateContextManager(object):
-    """
-    Internal helper class for DrawBotDrawingTool.savedState() allowing 'with' notation:
-
-        with savedState()
-            translate(x, y)
-            ...draw stuff...
-    """
-
-    def __init__(self, drawingTools):
-        self._drawingTools = drawingTools
-
-    def __enter__(self):
-        self._drawingTools.save()
-        return self
-
-    def __exit__(self, type, value, traceback):
-        self._drawingTools.restore()
-
-
 class DrawBotDrawingTool(object):
 
     def __init__(self):
@@ -98,6 +80,7 @@ class DrawBotDrawingTool(object):
         namespace.update(_getmodulecontents(self, self.__all__))
         namespace.update(_getmodulecontents(random, ["random", "randint", "choice", "shuffle"]))
         namespace.update(_getmodulecontents(math))
+        namespace.update(_getmodulecontents(drawBotbuiltins))
 
     def _addInstruction(self, callback, *args, **kwargs):
         if callback == "newPage":
@@ -169,7 +152,6 @@ class DrawBotDrawingTool(object):
             saveImage("~/Desktop/anOval.pdf")
         """
         self._reset()
-        self.installedFonts()
 
     def endDrawing(self):
         """
@@ -178,6 +160,33 @@ class DrawBotDrawingTool(object):
         """
         self._uninstallAllFonts()
         gifTools.clearExplodedGifCache()
+
+    @contextmanager
+    def drawing(self):
+        """
+        Reset and clean the drawing stack in a `with` statement.
+
+        .. downloadcode:: drawing.py
+
+            # Use the 'with' statement.
+            # This will make sure that the stack of pages is cleaned and reset
+            # once the interpreter exits the `with` statement
+            # The following example shows how to create three PDF booklets
+            # and it uses the `with drawing()` statement to ensure that page numbers
+            # restart from 1 in each PDF
+            for eachBooklet in range(1, 4):
+                with drawing():
+                    for eachPage in range(10):
+                        newPage(100, 100)
+                        text(f"{pageCount()}", (40, 40))
+                    saveImage(f"book_{eachBooklet}.pdf")
+        """
+        self.newDrawing()
+        try:
+            yield
+        finally:
+            self.endDrawing()
+            self.newDrawing()
 
     # magic variables
 
@@ -395,6 +404,8 @@ class DrawBotDrawingTool(object):
             saveImage("~/Desktop/firstImage300.png", imageResolution=300)
 
         """
+        if not isinstance(path, (str, os.PathLike)):
+            raise TypeError("Cannot apply saveImage options to multiple output formats, expected 'str' or 'os.PathLike', got '%s'" % type(path).__name__)
         # args are not supported anymore
         if args:
             if len(args) == 1:
@@ -404,18 +415,6 @@ class DrawBotDrawingTool(object):
             else:
                 # if there are more just raise a TypeError
                 raise TypeError("saveImage(path, **options) takes only keyword arguments")
-        # support for multiple paths in a single saveImage is deprecated
-        if isinstance(path, (list, tuple)):
-            if options:
-                # multiple paths with options is not possible
-                raise DrawBotError("Cannot apply saveImage options to multiple output formats.")
-            else:
-                # warn and solve when multiple paths are given
-                warnings.warn("saveImage([path, path, ...]) is deprecated, use multiple saveImage statements.")
-                for p in path:
-                    self.saveImage(p, **options)
-                return
-
         originalPath = path
         path = optimizePath(path)
         dirName = os.path.dirname(path)
@@ -434,7 +433,7 @@ class DrawBotDrawingTool(object):
                 if optionName not in allowedSaveImageOptions:
                     warnings.warn("Unrecognized saveImage() option found for %s: %s" % (context.__class__.__name__, optionName))
         self._drawInContext(context)
-        context.saveImage(path, options)
+        return context.saveImage(path, options)
 
     # filling docs with content from all possible and installed contexts
     saveImage.__doc__ = saveImage.__doc__ % dict(
@@ -499,6 +498,7 @@ class DrawBotDrawingTool(object):
         self._requiresNewFirstPage = True
         self._addInstruction("restore")
 
+    @contextmanager
     def savedState(self):
         """
         Save and restore the current graphics state in a `with` statement.
@@ -521,7 +521,11 @@ class DrawBotDrawingTool(object):
             # so this will be a black rectangle
             rect(0, 0, 50, 50)
         """
-        return SavedStateContextManager(self)
+        self.save()
+        try:
+            yield
+        finally:
+            self.restore()
 
     # basic shapes
 
@@ -933,6 +937,25 @@ class DrawBotDrawingTool(object):
         self._requiresNewFirstPage = True
         self._addInstruction("cmykStroke", c, m, y, k, alpha)
 
+    def opacity(self, value):
+        """
+        Sets the current opacity value. The `value` argument must be a value between 0.0 and 1.0.
+
+        .. downloadcode:: opacity.py
+            # set an opacity value
+            opacity(.5)
+            # set a color and draw some rect and text
+            fill(1, 0, 0)
+            rect(10, 10, 600, 600)
+            fill(0, 1, 0)
+            rect(390, 390, 600, 600)
+            fontSize(400)
+            fill(0, 0, 1)
+            text("draw", (500, 500), align="center")
+        """
+        self._requiresNewFirstPage = True
+        self._addInstruction("opacity", value)
+
     def shadow(self, offset, blur=None, color=None):
         """
         Adds a shadow with an `offset` (x, y), `blur` and a `color`.
@@ -1216,7 +1239,7 @@ class DrawBotDrawingTool(object):
         self._requiresNewFirstPage = True
         self._addInstruction("lineCap", value)
 
-    def lineDash(self, *value):
+    def lineDash(self, *value, offset=0):
         """
         Set a line dash with any given amount of lenghts.
         Uneven lenghts will have a visible stroke, even lenghts will be invisible.
@@ -1234,13 +1257,19 @@ class DrawBotDrawingTool(object):
             # draw a line
             line((0, 200), (0, 800))
             # translate the canvas
-            translate(300, 0)
+            translate(200, 0)
             # set a line dash
             lineDash(2, 10, 5, 5)
             # draw a line
             line((0, 200), (0, 800))
+            # translate the canvas
+            translate(200, 0)
+            # set a line dash and offset
+            lineDash(2, 10, 5, 5, offset=2)
+            # draw a line
+            line((0, 200), (0, 800))
             # translate the canvase
-            translate(300, 0)
+            translate(200, 0)
             # reset the line dash
             lineDash(None)
             # draw a line
@@ -1251,7 +1280,7 @@ class DrawBotDrawingTool(object):
         if isinstance(value[0], (list, tuple)):
             value = value[0]
         self._requiresNewFirstPage = True
-        self._addInstruction("lineDash", value)
+        self._addInstruction("lineDash", value, offset)
 
     # transform
 
@@ -1305,7 +1334,7 @@ class DrawBotDrawingTool(object):
 
     # text
 
-    def font(self, fontName, fontSize=None):
+    def font(self, fontNameOrPath, fontSize=None, fontNumber=0):
         """
         Set a font with the name of the font.
         If a font path is given the font will be installed and used directly.
@@ -1322,13 +1351,12 @@ class DrawBotDrawingTool(object):
 
             font("Times-Italic")
         """
-        fontName = self._tryInstallFontFromFontName(fontName)
-        fontName = str(fontName)
-        self._dummyContext.font(fontName, fontSize)
-        self._addInstruction("font", fontName, fontSize)
-        return fontName
+        font = getNSFontFromNameOrPath(fontNameOrPath, fontSize or 10, fontNumber)
+        self._dummyContext.font(fontNameOrPath, fontSize, fontNumber)
+        self._addInstruction("font", fontNameOrPath, fontSize, fontNumber)
+        return getFontName(font)
 
-    def fallbackFont(self, fontName):
+    def fallbackFont(self, fontNameOrPath, fontNumber=0):
         """
         Set a fallback font, this is used whenever a glyph is not available in the current font.
 
@@ -1336,14 +1364,12 @@ class DrawBotDrawingTool(object):
 
             fallbackFont("Times")
         """
-        fontName = self._tryInstallFontFromFontName(fontName)
-        fontName = str(fontName)
-        dummyFont = AppKit.NSFont.fontWithName_size_(fontName, 10)
+        dummyFont = getNSFontFromNameOrPath(fontNameOrPath, 10, fontNumber)
         if dummyFont is None:
-            raise DrawBotError("Fallback font '%s' is not available" % fontName)
-        self._dummyContext.fallbackFont(fontName)
-        self._addInstruction("fallbackFont", fontName)
-        return fontName
+            raise DrawBotError("Fallback font '%s' is not available" % fontNameOrPath)
+        self._dummyContext.fallbackFont(fontNameOrPath)
+        self._addInstruction("fallbackFont", fontNameOrPath, fontNumber)
+        return getFontName(dummyFont)
 
     def fontSize(self, fontSize):
         """
@@ -1418,6 +1444,23 @@ class DrawBotDrawingTool(object):
         self._dummyContext.underline(value)
         self._addInstruction("underline", value)
 
+    def strikethrough(self, value):
+        """
+        Set the strikethrough value.
+        Underline must be `single`, `thick`, `double` or `None`.
+
+        .. downloadcode:: strikethrough.py
+
+            size(1000, 200)
+            strikethrough("single")
+            fontSize(100)
+            text("hello strikethrough", (40, 60))
+        """
+        if value is not None and value not in self._dummyContext._textstrikethroughMap:
+            raise DrawBotError("strikethrough must be %s" % (", ".join(sorted(self._dummyContext._textstrikethroughMap.keys()))))
+        self._dummyContext.strikethrough(value)
+        self._addInstruction("strikethrough", value)
+
     def url(self, value):
         """
         Set the url value for text.
@@ -1479,8 +1522,9 @@ class DrawBotDrawingTool(object):
     def language(self, language):
         """
         Set the preferred language as language tag or None to use the default language.
-
-        Support is depending on local OS.
+        A language tag might be a [iso639-2 or iso639-1](https://www.loc.gov/standards/iso639-2/php/English_list.php)
+        code or a locale identifier supported by local OS.
+        A warning will be issued if the language tag is not supported.
 
         `language()` will activate the `locl` OpenType features, if supported by the current font.
 
@@ -1504,6 +1548,8 @@ class DrawBotDrawingTool(object):
             # darw the text again with a language set
             textBox(word, box)
         """
+        if not validateLanguageCode(language):
+            warnings.warn(f"Language '{language}' is not available.")
         self._dummyContext.language(language)
         self._checkLanguageHyphenation()
         self._addInstruction("language", language)
@@ -1520,7 +1566,28 @@ class DrawBotDrawingTool(object):
         if language and self._dummyContext._state.hyphenation:
             locale = CoreText.CFLocaleCreate(None, language)
             if not CoreText.CFStringIsHyphenationAvailableForLocale(locale):
-                warnings.warn("Language '%s' has no hyphenation available." % language)
+                warnings.warn(f"Language '{language}' has no hyphenation available.")
+
+    def writingDirection(self, direction):
+        """
+        Set the writing direction: `None`, `'LTR'` or `'RTL'`.
+
+        Use this when mixing writing directions.
+
+        .. downloadcode:: textRTL.py
+
+            size(400, 100)
+            # A bi-directional string
+            s = "Latin میتوان در بسیاری"
+            # Set the writing direction to Right-To-Left
+            writingDirection("RTL")
+            fontSize(40)
+            text(s, (10, 40))
+        """
+        if direction is not None and direction not in self._dummyContext._writingDirectionMap.keys():
+            raise DrawBotError("strikethrough must be %s" % (", ".join(sorted(self._dummyContext._writingDirectionMap.keys()))))
+        self._dummyContext.writingDirection(direction)
+        self._addInstruction("writingDirection", direction)
 
     def openTypeFeatures(self, *args, **features):
         """
@@ -1530,28 +1597,36 @@ class DrawBotDrawingTool(object):
 
         ::
 
-            c2pc, c2sc, calt, case, cpsp, cswh, dlig, frac, liga, lnum, onum, ordn, pnum, rlig, sinf, smcp, ss01, ss02, ss03, ss04, ss05, ss06, ss07, ss08, ss09, ss10, ss11, ss12, ss13, ss14, ss15, ss16, ss17, ss18, ss19, ss20, subs, sups, swsh, titl, tnum
+            c2pc, c2sc, calt, case, cpsp, cswh, dlig, frac, liga, kern, lnum, onum, ordn, pnum, rlig, sinf, smcp, ss01, ss02, ss03, ss04, ss05, ss06, ss07, ss08, ss09, ss10, ss11, ss12, ss13, ss14, ss15, ss16, ss17, ss18, ss19, ss20, subs, sups, swsh, titl, tnum
+
+        A `resetFeatures` argument can be set to `True` in order to get back to the default state.
 
         .. downloadcode:: openTypeFeatures.py
 
-            size(1000, 300)
+            newPage(1000, 300)
             # set a font
             font("Didot")
             # set the font size
             fontSize(50)
-            # draw a string
-            text("aabcde1234567890", (100, 200))
+            # create a string
+            someTxt = "aabcde1234567890"
+            # draw the string
+            text(someTxt, (100, 220))
             # enable some OpenType features
             openTypeFeatures(onum=True, smcp=True)
             # draw the same string
-            text("aabcde1234567890", (100, 100))
+            text(someTxt, (100, 150))
+            # reset defaults
+            openTypeFeatures(resetFeatures=True)
+            # the same string again, back to default features
+            text(someTxt, (100, 70))
         """
         result = self._dummyContext.openTypeFeatures(*args, **features)
         self._addInstruction("openTypeFeatures", *args, **features)
         return result
 
-    def listOpenTypeFeatures(self, fontName=None):
-        return self._dummyContext._state.text.listOpenTypeFeatures(fontName)
+    def listOpenTypeFeatures(self, fontNameOrPath=None):
+        return self._dummyContext._state.text.listOpenTypeFeatures(fontNameOrPath)
 
     listOpenTypeFeatures.__doc__ = FormattedString.listOpenTypeFeatures.__doc__
 
@@ -1582,15 +1657,40 @@ class DrawBotDrawingTool(object):
         self._addInstruction("fontVariations", *args, **axes)
         return result
 
-    def listFontVariations(self, fontName=None):
-        return self._dummyContext._state.text.listFontVariations(fontName)
+    def listFontVariations(self, fontNameOrPath=None):
+        return self._dummyContext._state.text.listFontVariations(fontNameOrPath)
 
     listFontVariations.__doc__ = FormattedString.listFontVariations.__doc__
 
-    def listNamedInstances(self, fontName=None):
-        return self._dummyContext._state.text.listNamedInstances(fontName)
+    def fontNamedInstance(self, name, fontNameOrPath=None):
+        """
+        Set a font with `name` of a named instance.
+        The `name` of the named instance must be listed in `listNamedInstances()`,
+
+        Optionally a `fontNameOrPath` can be given. If a font path is given that `fontNameOrPath` will be set.
+
+        .. downloadcode:: fontNamedInstance.py
+
+            newPage(500, 250)
+            # pick font
+            font("Skia", 200)
+            # select a named instance
+            fontNamedInstance("Skia-Regular_Black-Extended")
+            # draw text!!
+            text("abc", (50, 50))
+        """
+        self._dummyContext._state.text.fontNamedInstance(name, fontNameOrPath)
+        self._addInstruction("fontNamedInstance", name, fontNameOrPath)
+
+    def listNamedInstances(self, fontNameOrPath=None):
+        return self._dummyContext._state.text.listNamedInstances(fontNameOrPath)
 
     listNamedInstances.__doc__ = FormattedString.listNamedInstances.__doc__
+
+    def textProperties(self):
+        return self._dummyContext._state.text.textProperties()
+
+    textProperties.__doc__ = FormattedString.textProperties.__doc__
 
     # drawing text
 
@@ -1800,7 +1900,7 @@ class DrawBotDrawingTool(object):
         if not isinstance(txt, (str, FormattedString)):
             raise TypeError("expected 'str' or 'FormattedString', got '%s'" % type(txt).__name__)
         path, (x, y) = self._dummyContext._getPathForFrameSetter(box)
-        attrString = self._dummyContext.attributedString(txt)
+        attrString = self._dummyContext.attributedString(txt, align=align)
         setter = CoreText.CTFramesetterCreateWithAttributedString(attrString)
         box = CoreText.CTFramesetterCreateFrame(setter, (0, 0), path, None)
         ctLines = CoreText.CTFrameGetLines(box)
@@ -1809,7 +1909,7 @@ class DrawBotDrawingTool(object):
 
     def textBoxCharacterBounds(self, txt, box, align=None):
         """
-        Returns a list of typesetted bounding boxes `((x, y, w, h), baseLineOffset, characters, formattedString)`.
+        Returns a list of typesetted bounding boxes `((x, y, w, h), baseLineOffset, formattedSubString)`.
 
         A `box` could be a `(x, y, w, h)` or a bezierPath object.
 
@@ -1893,7 +1993,7 @@ class DrawBotDrawingTool(object):
     def image(self, path, position, alpha=1, pageNumber=None):
         """
         Add an image from a `path` with an `offset` and an `alpha` value.
-        This should accept most common file types like pdf, jpg, png, tiff and gif.
+        This accepts most common file types like pdf, jpg, png, tiff and gif. `NSImage` objects are accepted too.
 
         Optionally an `alpha` can be provided, which is a value between 0 and 1.
 
@@ -1913,7 +2013,7 @@ class DrawBotDrawingTool(object):
 
     def imageSize(self, path, pageNumber=None):
         """
-        Return the `width` and `height` of an image.
+        Return the `width` and `height` of an image. Supports pdf, jpg, png, tiff and gif file formats. `NSImage` objects are supported too.
 
         .. downloadcode:: imageSize.py
 
@@ -1926,10 +2026,16 @@ class DrawBotDrawingTool(object):
         _hasPixels = False
 
         if isinstance(path, AppKit.NSImage):
-            # its an NSImage
-            rep = path
+            # it is an NSImage
+            reps = path.representations()
+            if not reps:
+                # raise error when no representation are found
+                raise DrawBotError("Cannot extract bitmap data from given nsImage object")
+            # get the bitmap representation
+            _hasPixels = True
+            rep = reps[0]
         else:
-            if isinstance(path, str):
+            if isinstance(path, (str, os.PathLike)):
                 path = optimizePath(path)
             if path.startswith("http"):
                 url = AppKit.NSURL.URLWithString_(path)
@@ -1965,7 +2071,8 @@ class DrawBotDrawingTool(object):
 
     def imagePixelColor(self, path, xy):
         """
-        Return the color `r, g, b, a` of an image at a specified `x`, `y` possition.
+        Return the color `r, g, b, a` of an image at a specified `x`, `y` position.
+        Supports pdf, jpg, png, tiff and gif file formats. `NSImage` objects are supported too.
 
         .. downloadcode:: pixelColor.py
 
@@ -1999,7 +2106,7 @@ class DrawBotDrawingTool(object):
                         text("W", (x, y))
         """
         x, y = xy
-        if isinstance(path, str):
+        if isinstance(path, (str, os.PathLike)):
             path = optimizePath(path)
         bitmap = self._cachedPixelColorBitmaps.get(path)
         if bitmap is None:
@@ -2025,7 +2132,7 @@ class DrawBotDrawingTool(object):
 
     def imageResolution(self, path):
         """
-        Return the image resolution for a given image.
+        Return the image resolution for a given image. Supports pdf, jpg, png, tiff and gif file formats. `NSImage` objects are supported too.
         """
         if isinstance(path, AppKit.NSImage):
             # its an NSImage
@@ -2037,7 +2144,7 @@ class DrawBotDrawingTool(object):
             # get the bitmap representation
             rep = reps[0]
         else:
-            if isinstance(path, str):
+            if isinstance(path, (str, os.PathLike)):
                 path = optimizePath(path)
             if path.startswith("http"):
                 url = AppKit.NSURL.URLWithString_(path)
@@ -2162,9 +2269,11 @@ class DrawBotDrawingTool(object):
             # start a loop over all wanted pages
             for i in range(totalPages):
                 # set a random fill color
-                fill(random(), random(), random())
+                fill(i/(totalPages-1), .5, i/(totalPages-1))
                 # draw a rectangle
                 rect(10, 50 * i, 50, 50)
+                fill(1)
+                textBox(f"{i}", (10, 50 * i, 50, 50))
                 # add a clickable link rectangle with a unique name
                 linkRect(f"beginPage_{i}", (10, 10 + 50 * i, 50, 50))
 
@@ -2172,9 +2281,12 @@ class DrawBotDrawingTool(object):
             for i in range(totalPages):
                 # create a new page
                 newPage()
+                fontSize(200)
+                text(f"Page {i}", (30, 30))
                 # add a link destination with a given name
                 # the name must refer to a linkRect name
-                linkDestination(f"beginPage_{i}", (0, 0))
+                oval(width()/2-10, height()/2-10, 20, 20)
+                linkDestination(f"beginPage_{i}", (width()/2, height()/2))
 
         """
         x, y, w, h = xywh
@@ -2202,7 +2314,7 @@ class DrawBotDrawingTool(object):
         Returns a list of all installed fonts.
 
         Optionally a string with `supportsCharacters` can be provided,
-        the list of available installed fonts will be filterd by
+        the list of available installed fonts will be filtered by
         support of these characters,
         """
         if supportsCharacters is not None:
@@ -2212,7 +2324,10 @@ class DrawBotDrawingTool(object):
             fontAttributes = {CoreText.NSFontCharacterSetAttribute: characterSet}
             fontDescriptor = CoreText.CTFontDescriptorCreateWithAttributes(fontAttributes)
             descriptions = fontDescriptor.matchingFontDescriptorsWithMandatoryKeys_(None)
-            return [str(description[CoreText.NSFontNameAttribute]) for description in descriptions]
+            if descriptions is not None:
+                return [str(description[CoreText.NSFontNameAttribute]) for description in descriptions]
+            else:
+                return []  # No font was found that supports the requested characters
         return [str(f) for f in AppKit.NSFontManager.sharedFontManager().availableFonts()]
 
     def installFont(self, path):
@@ -2237,7 +2352,15 @@ class DrawBotDrawingTool(object):
             text("Hello World", (10, 10))
             # uninstall font
             uninstallFont(path)
+
+        This function has been deprecated: please use the font path directly in all
+        places that accept a font name.
         """
+        warnings.warn(
+            "installFont(path) has been deprecated, use the font path directly in "
+            "all places that accept a font name."
+        )
+        path = os.fspath(path)
         if path in self._tempInstalledFonts:
             return self._tempInstalledFonts[path]
 
@@ -2256,7 +2379,15 @@ class DrawBotDrawingTool(object):
     def uninstallFont(self, path):
         """
         Uninstall a font with a given path.
+
+        This function has been deprecated: please use the font path directly in all
+        places that accept a font name.
         """
+        warnings.warn(
+            "uninstallFont(path) has been deprecated, use the font path directly in "
+            "all places that accept a font name."
+        )
+        path = os.fspath(path)
         success, error = self._dummyContext.uninstallFont(path)
         if path in self._tempInstalledFonts:
             del self._tempInstalledFonts[path]
@@ -2268,17 +2399,6 @@ class DrawBotDrawingTool(object):
         for path in self._tempInstalledFonts:
             self._dummyContext.uninstallFont(path)
         self._tempInstalledFonts = dict()
-
-    def _tryInstallFontFromFontName(self, fontName):
-        # check if the fontName is actually a path
-        if os.path.exists(fontName) and not os.path.isdir(fontName):
-            fontPath = os.path.abspath(fontName)
-            ext = os.path.splitext(fontPath)[1]
-            if ext.lower() in [".otf", ".ttf", ".ttc"]:
-                fontName = self.installFont(fontPath)
-            else:
-                raise DrawBotError("Font '%s' is not .ttf, .otf or .ttc." % fontPath)
-        return fontName
 
     def fontContainsCharacters(self, characters):
         """
@@ -2298,6 +2418,12 @@ class DrawBotDrawingTool(object):
         Return the path to the file of the current font.
         """
         return self._dummyContext._state.text.fontFilePath()
+
+    def fontFileFontNumber(self):
+        """
+        Return the font number (index) the current font it its container file.
+        """
+        return self._dummyContext._state.text.fontFileFontNumber()
 
     def listFontGlyphNames(self):
         """
@@ -2415,7 +2541,7 @@ class DrawBotDrawingTool(object):
     def ImageObject(self, path=None):
         """
         Return a Image object, packed with filters.
-        This is a reusable object.
+        This is a reusable object. Supports pdf, jpg, png, tiff and gif file formats. `NSImage` objects are supported too.
 
         .. downloadcode:: imageObject.py
 

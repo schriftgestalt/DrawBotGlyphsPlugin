@@ -1,7 +1,9 @@
 import AppKit
 
+import functools
 import sys
 import os
+import io
 import subprocess
 from fontTools.misc.transform import Transform
 
@@ -149,6 +151,15 @@ def isGIF(url):
     return rep is not None, rep
 
 
+def pilToNSImage(pilImage):
+    buffer = io.BytesIO()
+    pilImage.save(buffer, "PNG")
+    data = buffer.getvalue()
+    data = AppKit.NSData.dataWithBytes_length_(data, len(data))
+    nsImage = AppKit.NSImage.alloc().initWithData_(data)
+    return nsImage
+
+
 # =============
 
 def stringToInt(code):
@@ -184,6 +195,25 @@ def transformationAtCenter(matrix, centerPoint):
 
 def nsStringLength(s):
     return len(s.encode("utf-16-be")) // 2
+
+
+# ===================
+# = language tools  =
+# ===================
+
+def canonicalLocaleCode(localeCode):
+    parsedLoc = AppKit.NSLocale.componentsFromLocaleIdentifier_(localeCode)
+    parts = [
+        parsedLoc[AppKit.kCFLocaleLanguageCode],
+        parsedLoc.get(AppKit.kCFLocaleScriptCode),
+        parsedLoc.get(AppKit.kCFLocaleCountryCode),
+    ]
+    return "_".join(part for part in parts if part)
+
+
+def validateLanguageCode(localeCode):
+    localeCode = canonicalLocaleCode(localeCode)
+    return localeCode in AppKit.NSLocale.availableLocaleIdentifiers()
 
 
 # ============
@@ -365,6 +395,7 @@ def memoize(function):
         # and and the result will be stored in the cache dict as [first, second]: returnValue
         # From then on, this value will be returned when the same argument is made to the addNumbers function
     """
+    @functools.wraps(function)
     def wrapper(*args):
         key = (function, args)
         if key in _memoizeCache:

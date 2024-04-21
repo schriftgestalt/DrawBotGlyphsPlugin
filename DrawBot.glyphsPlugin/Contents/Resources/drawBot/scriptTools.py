@@ -18,6 +18,11 @@ from objc import super
 CheckEventQueueForUserCancel = None
 
 def retrieveCheckEventQueueForUserCancelFromCarbon():
+    # something to fix later
+    # cmd . to cancel a script does not work and even crashes the app
+    # see https://github.com/typemytype/drawbot/issues/501
+    #     https://github.com/typemytype/drawbot/issues/505
+    return None
     # call this function explicit from the app didFinishLaunching
     global CheckEventQueueForUserCancel
     _carbonPath = find_library("Carbon")
@@ -70,31 +75,6 @@ class StdOutput(object):
 
     def close(self):
         pass
-
-
-def _addLocalSysPaths():
-    version = "%s.%s" % (sys.version_info.major, sys.version_info.minor)
-    if PY3:
-        paths = [
-            # add local stdlib and site-packages; TODO: this needs editing once we embed the full stdlib
-            '/Library/Frameworks/Python.framework/Versions/%s/lib/python%s' % (version, version),
-            '/Library/Frameworks/Python.framework/Versions/%s/lib/python%s/lib-dynload' % (version, version),
-            '/Library/Frameworks/Python.framework/Versions/%s/lib/python%s/site-packages' % (version, version),
-        ]
-    else:
-        paths = [
-            '/System/Library/Frameworks/Python.framework/Versions/%s/lib/python%s' % (version, version),
-            '/System/Library/Frameworks/Python.framework/Versions/%s/lib/python%s/lib-dynload' % (version, version),
-            '/System/Library/Frameworks/Python.framework/Versions/%s/lib/python%s/site-packages' % (version, version),
-        ]
-
-    paths.append('/Library/Python/%s/site-packages' % version)
-
-    for path in paths:
-        if path not in sys.path and os.path.exists(path):
-            site.addsitedir(path)
-
-#_addLocalSysPaths()
 
 
 class _Helper(object):
