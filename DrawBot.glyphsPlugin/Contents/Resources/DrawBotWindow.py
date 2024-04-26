@@ -252,7 +252,7 @@ class GlyphsDrawBotController(NSWindowController):
 		"""
 		Returns the content of the code view as a string.
 		"""
-		return self.document().text
+		return self.document().text()
 
 	@objc.python_method
 	def setCode(self, code):
