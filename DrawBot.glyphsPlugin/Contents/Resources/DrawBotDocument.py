@@ -41,13 +41,8 @@ class DrawBotDocument(NSDocument):
 		self._text = ""
 		return self
 
-	@property
 	def text(self):
 		return self._text
-
-	@text.setter
-	def text(self, value):
-		self._text = value
 
 	def setText_(self, text):
 		self._text = text
@@ -67,14 +62,13 @@ class DrawBotDocument(NSDocument):
 	# 	pass
 
 	def dataRepresentationOfType_(self, aType):
-		print("__aType", aType)
-		if self.text and len(self.text) > 0:
-			return NSString.stringWithString_(self.text).dataUsingEncoding_(NSUTF8StringEncoding)
+		if self._text and len(self._text) > 0:
+			return NSString.stringWithString_(self._text).dataUsingEncoding_(NSUTF8StringEncoding)
 		else:
 			NSData.data()
 
 	def loadDataRepresentation_ofType_(self, data, aType):
-		self.text = NSString.alloc().initWithData_encoding_(data, NSUTF8StringEncoding)
+		self.setText_(NSString.alloc().initWithData_encoding_(data, NSUTF8StringEncoding))
 		return True
 
 	def writableTypes(self):
