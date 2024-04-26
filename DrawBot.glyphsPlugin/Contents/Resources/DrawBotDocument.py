@@ -38,8 +38,13 @@ class DrawBotDocument (NSDocument):
 		self._text = ""
 		return self
 
+	@property
 	def text(self):
 		return self._text
+
+	@text.setter
+	def text(self, value):
+		self._text = value
 
 	def setText_(self, text):
 		self._text = text
