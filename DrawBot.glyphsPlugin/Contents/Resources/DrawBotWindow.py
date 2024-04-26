@@ -1,59 +1,60 @@
 from __future__ import print_function
 
-import AppKit
-from AppKit import NSWindowController, NSToolbarFlexibleSpaceItemIdentifier, NSToolbarSpaceItemIdentifier, NSContinuouslyUpdatesValueBindingOption, NSImage, NSString, NSShadow, NSFont, NSFontAttributeName, NSForegroundColorAttributeName, NSShadowAttributeName, NSDocumentController, NSBezierPath, NSWindowCollectionBehaviorFullScreenPrimary
-from Foundation import NSUserDefaults
-import objc
-from objc import super
-
-import sys, os
+import sys
+import os
 import traceback
+import objc
 
-from GlyphsApp import GetSaveFile
-
-from vanilla import *
+from AppKit import NSWindowController, NSContinuouslyUpdatesValueBindingOption, NSBezierPath, NSWindowCollectionBehaviorFullScreenPrimary
+from objc import super
+from vanilla import Window, Button
 import vanilla.dialogs
 
 from drawBot.context.drawBotContext import DrawBotContext
 from drawBot.context.baseContext import BezierPath
 from drawBot.drawBotDrawingTools import _drawBotDrawingTool
-from drawBot.misc import getDefault, setDefault, warnings
+from drawBot.misc import getDefault, warnings
 from drawBot.scriptTools import ScriptRunner, CallbackRunner, StdOutput
 from drawBot.ui.codeEditor import CodeEditor, OutPutEditor
 from drawBot.ui.drawView import DrawView, ThumbnailView
 from drawBot.ui.splitView import SplitView
-#from drawBot.scriptTools import _Helper # for ScriptRunner
+# from drawBot.scriptTools import _Helper # for ScriptRunner
 
 sys.path.append(os.path.dirname(__file__))
 
+
 def drawGlyph(glyph):
-	BezierPath = glyph._layer.bezierPath
-	if BezierPath != None:
-		BezierPath = BezierPath.copy()
+	bezierPath = glyph._layer.bezierPath
+	if bezierPath is None:
+		bezierPath = NSBezierPath.copy()
 	else:
-		BezierPath = NSBezierPath.bezierPath()
-	OpenBezierPath = glyph._layer.openBezierPath
-	if OpenBezierPath:
-		BezierPath.appendBezierPath_(OpenBezierPath)
+		bezierPath = NSBezierPath.bezierPath()
+	openBezierPath = glyph._layer.openBezierPath
+	if openBezierPath:
+		bezierPath.appendBezierPath_(openBezierPath)
 	for currComponent in glyph._layer.components:
 		BezierPath.appendBezierPath_(currComponent.bezierPath)
-	_drawBotDrawingTool.drawPath(BezierPath)
+	_drawBotDrawingTool.drawPath(bezierPath)
+
 
 _drawBotDrawingTool.drawGlyph = drawGlyph
+
 
 class GSBezierPathDraw(BezierPath):
 
 	def addGlyph(self, glyph):
-		BezierPath = glyph._layer.bezierPath()
-		if BezierPath != None:
-			BezierPath = BezierPath.copy()
+		bezierPath = glyph._layer.bezierPath()
+		if bezierPath is None:
+			bezierPath = NSBezierPath.copy()
 		else:
-			BezierPath = NSBezierPath.bezierPath()
+			bezierPath = NSBezierPath.bezierPath()
 		for currComponent in glyph._layer.components:
-			BezierPath.appendBezierPath_(currComponent.bezierPath())
-		self.getNSBezierPath().appendBezierPath_(BezierPath)
+			bezierPath.appendBezierPath_(currComponent.bezierPath())
+		self.getNSBezierPath().appendBezierPath_(bezierPath)
+
 
 _drawBotDrawingTool._bezierPathClass = GSBezierPathDraw
+
 
 class GlyphsDrawBotController(NSWindowController):
 
@@ -65,7 +66,6 @@ class GlyphsDrawBotController(NSWindowController):
 
 	def init(self):
 		self = super(GlyphsDrawBotController, self).init()
-		document = None
 		# make a window
 		self.w = Window((400, 400), "DrawBot", minSize=(200, 200), textured=False)
 		# setting previously stored frames, if any
@@ -78,7 +78,7 @@ class GlyphsDrawBotController(NSWindowController):
 		
 		# the code editor
 		self.codeView = CodeEditor((0, 0, -0, -0))
-		self.codeView.getNSTextView().bind_toObject_withKeyPath_options_("value", self, "document.text", {NSContinuouslyUpdatesValueBindingOption:True})
+		self.codeView.getNSTextView().bind_toObject_withKeyPath_options_("value", self, "document.text", {NSContinuouslyUpdatesValueBindingOption: True})
 		scrollview = self.codeView.getNSTextView().enclosingScrollView()
 		scrollview.setBorderType_(0)
 		
@@ -148,7 +148,7 @@ class GlyphsDrawBotController(NSWindowController):
 			# reset the drawing tool
 			_drawBotDrawingTool.newDrawing()
 			# create a namespace
-			namespace = {} # DrawBotNamespace(_drawBotDrawingTool, _drawBotDrawingTool._magicVariables)
+			namespace = {}  # DrawBotNamespace(_drawBotDrawingTool, _drawBotDrawingTool._magicVariables)
 			# add the tool callbacks in the name space
 			_drawBotDrawingTool._addToNamespace(namespace)
 			# when enabled clear the output text view
@@ -158,7 +158,7 @@ class GlyphsDrawBotController(NSWindowController):
 			self.output = []
 	
 			liveOutput = None
-			#if getDefault("DrawButLiveUpdateStdoutStderr", False):
+			# if getDefault("DrawButLiveUpdateStdoutStderr", False):
 			liveOutput = self.outPutView
 			
 			self.stdout = StdOutput(self.output, outputView=liveOutput)
@@ -177,7 +177,7 @@ class GlyphsDrawBotController(NSWindowController):
 					_drawBotDrawingTool._drawInContext(context)
 				# create a context to draw in
 				context = DrawBotContext()
-				# savely run the callback and track all traceback back to the output
+				# safely run the callback and track all traceback back to the output
 				CallbackRunner(createContext, stdout=self.stdout, stderr=self.stderr, args=[context])
 				# get the pdf document and set in the draw view
 				pdfDocument = context.getNSPDFDocument()
@@ -191,14 +191,14 @@ class GlyphsDrawBotController(NSWindowController):
 				self.drawView.setPDFDocument(None)
 			# drawing is done
 			_drawBotDrawingTool.endDrawing()
-			# set the catched print statements and tracebacks in the the output text view
+			# set the caught print statements and tracebacks in the output text view
 			for text, isError in self.output:
 				if liveCoding and isError:
 					continue
 				self.outPutView.append(text, isError)
 
 			# reset the code backup if the script runs with any crashes
-			#setDefault("pythonCodeBackup", None)
+			# setDefault("pythonCodeBackup", None)
 			# clean up
 
 			self.output = None
@@ -222,9 +222,9 @@ class GlyphsDrawBotController(NSWindowController):
 		self.output = []
 		self.stdout = StdOutput(self.output)
 		self.stderr = StdOutput(self.output, True)
-		# run the code, but with the optional flag checkSyntaxOnly so it will just compile the code
+		# run the code, but with the optional flag checkSyntaxOnly, so it will just compile the code
 		ScriptRunner(code, path, stdout=self.stdout, stderr=self.stderr, checkSyntaxOnly=True)
-		# set the catched print statements and tracebacks in the the output text view
+		# set the caught print statements and tracebacks in the output text view
 		for text, isError in self.output:
 			self.outPutView.append(text, isError)
 		# clean up
@@ -259,7 +259,7 @@ class GlyphsDrawBotController(NSWindowController):
 		"""
 		Sets code in to the code view.
 		"""
-		assert(False)
+		assert (False)
 		self.document().setText_(code)
 
 	def pdfData(self):
@@ -274,33 +274,34 @@ class GlyphsDrawBotController(NSWindowController):
 
 	@objc.python_method
 	def assignToDocument(self, nsDocument):
-		# assing the window to the document
+		# assign the window to the document
 		self.w.assignToDocument(nsDocument)
-	
+
 	# responders
-	
+
 	def runButtonAction_(self, sender):
 		self.runCode()
-	
+
 	def clearButtonAction_(self, sender):
 		self.outPutView.clear()
-	
+
 	def commentSelection_(self, sender):
 		self.codeView.comment()
-		
+
 	def toolbarUncomment_(self, sender):
 		self.codeView.uncomment()
-	
+
 	def shiftSelectedLinesRight_(self, sender):
 		self.codeView.indent()
-	
+
 	def shiftSelectedLinesLeft_(self, sender):
 		self.codeView.dedent()
-	
+
 	def toolbarReload_(self, sender):
 		self.codeView.reload()
-	
-	def exportFontAction_(self, sender): # new API in Glyphs 3
+
+	def exportFontAction_(self, sender):  # new API in Glyphs 3
 		self.savePDF()
+
 	def exportFont_(self, sender):
 		self.exportFontAction_(sender)

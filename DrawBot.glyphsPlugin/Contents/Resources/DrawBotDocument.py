@@ -1,13 +1,15 @@
 from __future__ import print_function
 import objc
-import sys, os, re
+import sys
+import os
 from objc import super
 
-from Foundation import NSLog, NSString, NSUTF8StringEncoding
-from AppKit import NSApplication, NSDocumentController, NSDocument, NSMenuItem
+from Foundation import NSLog, NSString, NSUTF8StringEncoding, NSData
+from AppKit import NSDocumentController, NSDocument, NSMenuItem
 
 from GlyphsApp import Glyphs, FILE_MENU
 from GlyphsApp.plugins import GeneralPlugin
+
 
 class DrawBotPlugin(GeneralPlugin):
 
@@ -27,7 +29,8 @@ class DrawBotPlugin(GeneralPlugin):
 		newDoc.makeWindowControllers()
 		newDoc.showWindows()
 
-class DrawBotDocument (NSDocument):
+
+class DrawBotDocument(NSDocument):
 
 	def init(self):
 		"""
@@ -53,37 +56,38 @@ class DrawBotDocument (NSDocument):
 		from DrawBotWindow import GlyphsDrawBotController
 		WindowController = GlyphsDrawBotController.alloc().init()
 		self.addWindowController_(WindowController)
-		
+
 	def windowController(self):
 		return self.windowControllers()[0]
-	
+
 	# def __del__(self):
 	# 	"""
 	# 	Remove all observers you added in init().
 	# 	"""
 	# 	pass
-	
+
 	def dataRepresentationOfType_(self, aType):
+		print("__aType", aType)
 		if self.text and len(self.text) > 0:
 			return NSString.stringWithString_(self.text).dataUsingEncoding_(NSUTF8StringEncoding)
 		else:
-			NSdata.data()
-	
+			NSData.data()
+
 	def loadDataRepresentation_ofType_(self, data, aType):
 		self.text = NSString.alloc().initWithData_encoding_(data, NSUTF8StringEncoding)
 		return True
-	
+
 	def writableTypes(self):
 		return ["public.python-script"]
-	
+
 	def isNativeType_(self, aType):
 		return "public.python-script" == aType
-		
+
 	def autosavesInPlace(self):
 		return False
-	
+
 	def autosavesDrafts(self):
 		return True
-	
+
 	def font(self):
 		return None
