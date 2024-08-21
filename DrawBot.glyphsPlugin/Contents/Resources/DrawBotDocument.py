@@ -20,6 +20,8 @@ class DrawBotPlugin(GeneralPlugin):
 	@objc.python_method
 	def start(self):
 		newMenuItem = NSMenuItem("New Drawbot", self.newDocument_)
+		if not newMenuItem.target():
+			newMenuItem.setTarget_(self)
 		Glyphs.menu[FILE_MENU].insert(1, newMenuItem)
 		sys.path.append(os.path.dirname(__file__))
 
