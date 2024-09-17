@@ -256,6 +256,7 @@ class _inherit:
     def __repr__(self):
         return 'inherit'
 
+
 inherit = _inherit()  # pylint: disable=invalid-name
 
 
@@ -330,6 +331,7 @@ class _This:
     Special singleton used for indicating the caller class.
     Used by ``using``.
     """
+
 
 this = _This()
 
@@ -458,8 +460,7 @@ class RegexLexerMeta(LexerMeta):
         elif isinstance(new_state, tuple):
             # push more than one state
             for istate in new_state:
-                assert (istate in unprocessed or
-                        istate in ('#pop', '#push')), \
+                assert (istate in unprocessed or istate in ('#pop', '#push')), \
                     'unknown new state ' + istate
             return new_state
         else:
@@ -554,7 +555,7 @@ class RegexLexerMeta(LexerMeta):
                     continue
 
                 # Replace the "inherit" value with the items
-                curitems[inherit_ndx:inherit_ndx+1] = items
+                curitems[inherit_ndx:inherit_ndx + 1] = items
                 try:
                     # N.b. this is the index in items (that is, the superclass
                     # copy), so offset required when storing below.

@@ -4,10 +4,10 @@ import sys
 import os
 from objc import super
 
-from Foundation import NSLog, NSString, NSUTF8StringEncoding, NSData
-from AppKit import NSDocumentController, NSDocument, NSMenuItem
+from Foundation import NSString, NSUTF8StringEncoding, NSData
+from AppKit import NSDocumentController, NSDocument
 
-from GlyphsApp import Glyphs, FILE_MENU
+from GlyphsApp import Glyphs, FILE_MENU, NSMenuItem
 from GlyphsApp.plugins import GeneralPlugin
 
 

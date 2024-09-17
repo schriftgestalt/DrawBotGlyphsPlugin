@@ -25,7 +25,7 @@
     :copyright: Copyright 2006-2020 by the Pygments team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
-import sys
+
 from io import StringIO, BytesIO
 
 __version__ = '2.7.2'
@@ -82,4 +82,3 @@ def highlight(code, lexer, formatter, outfile=None):
     it is returned as a string.
     """
     return format(lex(code, lexer), formatter, outfile)
-

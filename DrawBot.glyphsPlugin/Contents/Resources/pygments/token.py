@@ -28,7 +28,7 @@ class _TokenType(tuple):
 
     def __contains__(self, val):
         return self is val or (
-            type(val) is self.__class__ and
+            isinstance(val, self.__class__) and
             val[:len(self)] == self
         )
 

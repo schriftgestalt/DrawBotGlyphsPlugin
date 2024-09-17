@@ -563,7 +563,7 @@ class HtmlFormatter(Formatter):
 
     def get_css_prefix(self, arg):
         if arg is None:
-            arg = ('cssclass' in self.options and '.'+self.cssclass or '')
+            arg = ('cssclass' in self.options and '.' + self.cssclass or '')
         if isinstance(arg, str):
             args = [arg]
         else:
@@ -663,7 +663,7 @@ class HtmlFormatter(Formatter):
 
         lines = []
 
-        for i in range(fl, fl+lncount):
+        for i in range(fl, fl + lncount):
             print_line = i % st == 0
             special_line = sp and i % sp == 0
 
@@ -735,7 +735,7 @@ class HtmlFormatter(Formatter):
             if style:
                 yield 1, '<span%s>%s</span>' % (style, line) + inner_line
             else:
-                yield 1, line +  inner_line
+                yield 1, line + inner_line
             num += 1
 
     def _wrap_lineanchors(self, inner):

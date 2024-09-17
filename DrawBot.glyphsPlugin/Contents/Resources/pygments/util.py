@@ -10,7 +10,6 @@
 """
 
 import re
-import sys
 from io import TextIOWrapper
 
 
@@ -25,8 +24,10 @@ doctype_lookup_re = re.compile(r'''
      )
      [^>]*>
 ''', re.DOTALL | re.MULTILINE | re.VERBOSE)
-tag_re = re.compile(r'<(.+?)(\s.*?)?>.*?</.+?>',
-                    re.UNICODE | re.IGNORECASE | re.DOTALL | re.MULTILINE)
+tag_re = re.compile(
+    r'<(.+?)(\s.*?)?>.*?</.+?>',
+    re.UNICODE | re.IGNORECASE | re.DOTALL | re.MULTILINE
+)
 xml_decl_re = re.compile(r'\s*<\?xml[^>]*\?>', re.I)
 
 

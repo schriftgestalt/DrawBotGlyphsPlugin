@@ -35,6 +35,7 @@
     :copyright: Copyright 2006-2020 by the Pygments team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
+
 LEXER_ENTRY_POINT = 'pygments.lexers'
 FORMATTER_ENTRY_POINT = 'pygments.formatters'
 STYLE_ENTRY_POINT = 'pygments.styles'

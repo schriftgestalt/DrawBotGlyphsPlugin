@@ -80,4 +80,4 @@ if __name__ == '__main__':  # pragma: no cover
         fp.write('FORMATTERS = {\n    %s\n}\n\n' % ',\n    '.join(found_formatters))
         fp.write(footer)
 
-    print ('=== %d formatters processed.' % len(found_formatters))
+    print('=== %d formatters processed.' % len(found_formatters))

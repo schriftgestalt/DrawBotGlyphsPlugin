@@ -75,22 +75,22 @@ class GlyphsDrawBotController(NSWindowController):
 		_NSWindow.setDelegate_(self)
 		_NSWindow.setContentBorderThickness_forEdge_(27, 1)
 		self.w.getNSWindow().setCollectionBehavior_(NSWindowCollectionBehaviorFullScreenPrimary)
-		
+
 		# the code editor
 		self.codeView = CodeEditor((0, 0, -0, -0))
 		self.codeView.getNSTextView().bind_toObject_withKeyPath_options_("value", self, "document.text", {NSContinuouslyUpdatesValueBindingOption: True})
 		scrollview = self.codeView.getNSTextView().enclosingScrollView()
 		scrollview.setBorderType_(0)
-		
+
 		# the output view (will catch all stdout and stderr)
 		self.outPutView = OutPutEditor((0, 0, -0, -0), readOnly=True)
 		scrollview = self.outPutView.getNSTextView().enclosingScrollView()
 		scrollview.setBorderType_(0)
-		
+
 		# the view to draw in
 		self.drawView = DrawView((0, 0, -0, -0))
-		pdfView = self.drawView.getNSView()
-		view = pdfView.documentView()
+		# pdfView = self.drawView.getNSView()
+		# view = pdfView.documentView()
 		# the view with all thumbnails
 		self.thumbnails = ThumbnailView((0, 0, -0, -0))
 		# connect the thumbnail view with the draw view
@@ -110,15 +110,15 @@ class GlyphsDrawBotController(NSWindowController):
 			dict(view=self.codeSplit, identifier="codeSplit", minSize=50, canCollapse=False),
 		]
 		self.w.split = SplitView((0, 0, -0, -27), paneDescriptors)
-		
+
 		self.w.runButton = Button((-67, -24, 50, 20), "Run", callback=self.runButtonAction_)
 		self.w.runButton.bind("\r", ["command"])
 		self.w.runButton._nsObject.setToolTip_(u"Run the script (cmd+\u23CE)")
-		
+
 		self.w.clearButton = Button((-135, -24, 58, 20), "Clear", callback=self.clearButtonAction_)
 		self.w.clearButton.bind("k", ["command"])
 		self.w.clearButton._nsObject.setToolTip_(u"Clear Log (cmd+K)")
-		
+
 		# get the real size of the window
 		windowX, windowY, windowWidth, windowHeight = self.w.getPosSize()
 		# set the split view dividers at a specific position based on the window size
@@ -126,7 +126,7 @@ class GlyphsDrawBotController(NSWindowController):
 		self.w.split.setDividerPosition(1, windowWidth * .6)
 		self.w.split.setDividerPosition(1, windowWidth * .6)
 		self.codeSplit.setDividerPosition(0, windowHeight * .7)
-		
+
 		return self
 
 	def __del__(self):
@@ -156,11 +156,11 @@ class GlyphsDrawBotController(NSWindowController):
 				self.outPutView.clear()
 			# create a new std output, catching all print statements and tracebacks
 			self.output = []
-	
+
 			liveOutput = None
 			# if getDefault("DrawButLiveUpdateStdoutStderr", False):
 			liveOutput = self.outPutView
-			
+
 			self.stdout = StdOutput(self.output, outputView=liveOutput)
 			self.stderr = StdOutput(self.output, isError=True, outputView=liveOutput)
 			sys.argv = [path]

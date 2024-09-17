@@ -18,14 +18,17 @@ __all__ = ['SvgFormatter']
 
 def escape_html(text):
     """Escape &, <, > as well as single and double quotes for HTML."""
-    return text.replace('&', '&amp;').  \
-                replace('<', '&lt;').   \
-                replace('>', '&gt;').   \
-                replace('"', '&quot;'). \
-                replace("'", '&#39;')
+    return (
+        text.replace('&', '&amp;')
+        .replace('<', '&lt;')
+        .replace('>', '&gt;')
+        .replace('"', '&quot;')
+        .replace("'", '&#39;')
+    )
 
 
 class2style = {}
+
 
 class SvgFormatter(Formatter):
     """
@@ -61,22 +64,22 @@ class SvgFormatter(Formatter):
 
     `linenostep`
         If set to a number n > 1, only every nth line number is printed.
-        
+
     `linenowidth`
-        Maximum width devoted to line numbers (default: ``3*ystep``, sufficient
-        for up to 4-digit line numbers. Increase width for longer code blocks).  
-        
+        Maximum width devoted to line numbers (default: ``3 * ystep``, sufficient
+        for up to 4-digit line numbers. Increase width for longer code blocks).
+
     `xoffset`
         Starting offset in X direction, defaults to ``0``.
 
     `yoffset`
         Starting offset in Y direction, defaults to the font size if it is given
-        in pixels, or ``20`` else.  (This is necessary since text coordinates
+        in pixels, or ``20`` else. (This is necessary since text coordinates
         refer to the text baseline, not the top edge.)
 
     `ystep`
-        Offset to add to the Y coordinate for each subsequent line.  This should
-        roughly be the text size plus 5.  It defaults to that value if the text
+        Offset to add to the Y coordinate for each subsequent line. This should
+        roughly be the text size plus 5. It defaults to that value if the text
         size is given in pixels, or ``25`` else.
 
     `spacehack`
@@ -98,7 +101,8 @@ class SvgFormatter(Formatter):
         self.fontsize = options.get('fontsize', '14px')
         self.xoffset = get_int_opt(options, 'xoffset', 0)
         fs = self.fontsize.strip()
-        if fs.endswith('px'): fs = fs[:-2].strip()
+        if fs.endswith('px'):
+            fs = fs[:-2].strip()
         try:
             int_fs = int(fs)
         except:
@@ -106,10 +110,10 @@ class SvgFormatter(Formatter):
         self.yoffset = get_int_opt(options, 'yoffset', int_fs)
         self.ystep = get_int_opt(options, 'ystep', int_fs + 5)
         self.spacehack = get_bool_opt(options, 'spacehack', True)
-        self.linenos = get_bool_opt(options,'linenos',False)
-        self.linenostart = get_int_opt(options,'linenostart',1)
-        self.linenostep = get_int_opt(options,'linenostep',1)
-        self.linenowidth = get_int_opt(options,'linenowidth', 3*self.ystep)
+        self.linenos = get_bool_opt(options, 'linenos', False)
+        self.linenostart = get_int_opt(options, 'linenostart', 1)
+        self.linenostep = get_int_opt(options, 'linenostep', 1)
+        self.linenowidth = get_int_opt(options, 'linenowidth', 3 * self.ystep)
         self._stylecache = {}
 
     def format_unencoded(self, tokensource, outfile):
@@ -123,25 +127,31 @@ class SvgFormatter(Formatter):
         y = self.yoffset
         if not self.nowrap:
             if self.encoding:
-                outfile.write('<?xml version="1.0" encoding="%s"?>\n' %
-                              self.encoding)
+                outfile.write(
+                    '<?xml version="1.0" encoding="%s"?>\n' %
+                    self.encoding
+                )
             else:
                 outfile.write('<?xml version="1.0"?>\n')
-            outfile.write('<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" '
-                          '"http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/'
-                          'svg10.dtd">\n')
+            outfile.write(
+                '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" '
+                '"http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/'
+                'svg10.dtd">\n'
+            )
             outfile.write('<svg xmlns="http://www.w3.org/2000/svg">\n')
-            outfile.write('<g font-family="%s" font-size="%s">\n' %
-                          (self.fontfamily, self.fontsize))
-        
-        counter = self.linenostart 
+            outfile.write(
+                '<g font-family="%s" font-size="%s">\n' %
+                (self.fontfamily, self.fontsize)
+            )
+
+        counter = self.linenostart
         counter_step = self.linenostep
         counter_style = self._get_style(Comment)
         line_x = x
-        
+
         if self.linenos:
             if counter % counter_step == 0:
-                outfile.write('<text x="%s" y="%s" %s text-anchor="end">%s</text>' % (x+self.linenowidth,y,counter_style,counter))
+                outfile.write('<text x="%s" y="%s" %s text-anchor="end">%s</text>' % (x + self.linenowidth, y, counter_style, counter))
             line_x += self.linenowidth + self.ystep
             counter += 1
 
@@ -159,10 +169,10 @@ class SvgFormatter(Formatter):
                 y += self.ystep
                 outfile.write('</text>\n')
                 if self.linenos and counter % counter_step == 0:
-                    outfile.write('<text x="%s" y="%s" text-anchor="end" %s>%s</text>' % (x+self.linenowidth,y,counter_style,counter))
-                
+                    outfile.write('<text x="%s" y="%s" text-anchor="end" %s>%s</text>' % (x + self.linenowidth, y, counter_style, counter))
+
                 counter += 1
-                outfile.write('<text x="%s" y="%s" ' 'xml:space="preserve">' % (line_x,y))
+                outfile.write('<text x="%s" y="%s" ' 'xml:space="preserve">' % (line_x, y))
             outfile.write(tspan + parts[-1] + tspanend)
         outfile.write('</text>')
 

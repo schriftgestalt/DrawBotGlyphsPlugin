@@ -24,8 +24,6 @@
 #    black-on-while, so colors like "white background" need to be converted
 #    to "white background, black foreground", etc...
 
-import sys
-
 from pygments.formatter import Formatter
 from pygments.console import codes
 from pygments.style import ansicolors
@@ -51,7 +49,7 @@ class EscapeSequence:
         attrs = []
         if self.fg is not None:
             if self.fg in ansicolors:
-                esc = codes[self.fg.replace('ansi','')]
+                esc = codes[self.fg.replace('ansi', '')]
                 if ';01m' in esc:
                     self.bold = True
                 # extract fg color code.
@@ -60,9 +58,9 @@ class EscapeSequence:
                 attrs.extend(("38", "5", "%i" % self.fg))
         if self.bg is not None:
             if self.bg in ansicolors:
-                esc = codes[self.bg.replace('ansi','')]
+                esc = codes[self.bg.replace('ansi', '')]
                 # extract fg color code, add 10 for bg.
-                attrs.append(str(int(esc[2:4])+10))
+                attrs.append(str(int(esc[2:4]) + 10))
             else:
                 attrs.extend(("48", "5", "%i" % self.bg))
         if self.bold:
@@ -182,7 +180,7 @@ class Terminal256Formatter(Formatter):
             self.xterm_colors.append((v, v, v))
 
     def _closest_color(self, r, g, b):
-        distance = 257*257*3  # "infinity" (>distance from #000000 to #ffffff)
+        distance = 257 * 257 * 3  # "infinity" (>distance from #000000 to #ffffff)
         match = 0
 
         for i in range(0, 254):
@@ -191,7 +189,7 @@ class Terminal256Formatter(Formatter):
             rd = r - values[0]
             gd = g - values[1]
             bd = b - values[2]
-            d = rd*rd + gd*gd + bd*bd
+            d = rd * rd + gd * gd + bd * bd
 
             if d < distance:
                 match = i

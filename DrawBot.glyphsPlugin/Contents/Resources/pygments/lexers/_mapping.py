@@ -36,12 +36,17 @@ if __name__ == '__main__':  # pragma: no cover
                 for lexer_name in module.__all__:
                     lexer = getattr(module, lexer_name)
                     found_lexers.append(
-                        '%r: %r' % (lexer_name,
-                                    (module_name,
-                                     lexer.name,
-                                     tuple(lexer.aliases),
-                                     tuple(lexer.filenames),
-                                     tuple(lexer.mimetypes))))
+                        '%r: %r' % (
+                            lexer_name,
+                            (
+                                module_name,
+                                lexer.name,
+                                tuple(lexer.aliases),
+                                tuple(lexer.filenames),
+                                tuple(lexer.mimetypes)
+                            )
+                        )
+                    )
     # sort them to make the diff minimal
     found_lexers.sort()
 
@@ -57,4 +62,4 @@ if __name__ == '__main__':  # pragma: no cover
         fp.write('LEXERS = {\n    %s,\n}\n\n' % ',\n    '.join(found_lexers))
         fp.write(footer)
 
-    print ('=== %d lexers processed.' % len(found_lexers))
+    print('=== %d lexers processed.' % len(found_lexers))

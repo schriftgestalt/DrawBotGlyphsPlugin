@@ -170,7 +170,7 @@ def _print_list(what):
 
         info = []
         for fullname, names, exts, _ in get_all_lexers():
-            tup = (', '.join(names)+':', fullname,
+            tup = (', '.join(names) + ':', fullname,
                    exts and '(filenames ' + ', '.join(exts) + ')' or '')
             info.append(tup)
         info.sort()
@@ -446,8 +446,7 @@ def main_inner(popts, args, usage):
                         name = None
 
                 if filename and name:
-                    fmter = load_formatter_from_file(filename, name,
-                                    **parsed_opts)
+                    fmter = load_formatter_from_file(filename, name, **parsed_opts)
                 else:
                     fmter = load_formatter_from_file(fmter, **parsed_opts)
             except ClassNotFound as err:
@@ -501,7 +500,8 @@ def main_inner(popts, args, usage):
             pass
         else:
             outfile = colorama.initialise.wrap_stream(
-                outfile, convert=None, strip=None, autoreset=False, wrap=True)
+                outfile, convert=None, strip=None, autoreset=False, wrap=True
+            )
 
     # When using the LaTeX formatter and the option `escapeinside` is
     # specified, we need a special lexer which collects escaped text

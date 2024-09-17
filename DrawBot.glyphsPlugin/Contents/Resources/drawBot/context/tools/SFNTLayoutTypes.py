@@ -7,45 +7,45 @@ import CoreText
 
 # Feature types
 kAllTypographicFeaturesType = 0
-kLigaturesType  = 1
+kLigaturesType = 1
 kCursiveConnectionType = 2
-kLetterCaseType  = 3 # deprecated - use kLowerCaseType or kUpperCaseType instead
+kLetterCaseType = 3  # deprecated - use kLowerCaseType or kUpperCaseType instead
 kVerticalSubstitutionType = 4
 kLinguisticRearrangementType = 5
-kNumberSpacingType  = 6
-kSmartSwashType  = 8
-kDiacriticsType  = 9
-kVerticalPositionType  = 10
-kFractionsType  = 11
+kNumberSpacingType = 6
+kSmartSwashType = 8
+kDiacriticsType = 9
+kVerticalPositionType = 10
+kFractionsType = 11
 kOverlappingCharactersType = 13
 kTypographicExtrasType = 14
 kMathematicalExtrasType = 15
-kOrnamentSetsType  = 16
+kOrnamentSetsType = 16
 kCharacterAlternativesType = 17
-kDesignComplexityType  = 18
-kStyleOptionsType  = 19
-kCharacterShapeType  = 20
-kNumberCaseType  = 21
-kTextSpacingType  = 22
-kTransliterationType  = 23
-kAnnotationType  = 24
-kKanaSpacingType  = 25
+kDesignComplexityType = 18
+kStyleOptionsType = 19
+kCharacterShapeType = 20
+kNumberCaseType = 21
+kTextSpacingType = 22
+kTransliterationType = 23
+kAnnotationType = 24
+kKanaSpacingType = 25
 kIdeographicSpacingType = 26
 kUnicodeDecompositionType = 27
-kRubyKanaType   = 28
+kRubyKanaType = 28
 kCJKSymbolAlternativesType = 29
 kIdeographicAlternativesType = 30
 kCJKVerticalRomanPlacementType = 31
-kItalicCJKRomanType  = 32
+kItalicCJKRomanType = 32
 kCaseSensitiveLayoutType = 33
-kAlternateKanaType  = 34
+kAlternateKanaType = 34
 kStylisticAlternativesType = 35
 kContextualAlternatesType = 36
-kLowerCaseType  = 37
-kUpperCaseType  = 38
-kLanguageTagType  = 39
-kCJKRomanSpacingType  = 103
-kLastFeatureType  = -1
+kLowerCaseType = 37
+kUpperCaseType = 38
+kLanguageTagType = 39
+kCJKRomanSpacingType = 103
+kLastFeatureType = -1
 
 # Selectors for feature type kAllTypographicFeaturesType
 kAllTypeFeaturesOnSelector = 0
@@ -76,17 +76,17 @@ kHistoricalLigaturesOnSelector = 20
 kHistoricalLigaturesOffSelector = 21
 
 # Selectors for feature type kCursiveConnectionType
-kUnconnectedSelector  = 0
+kUnconnectedSelector = 0
 kPartiallyConnectedSelector = 1
-kCursiveSelector  = 2
+kCursiveSelector = 2
 
 # Selectors for feature type kLetterCaseType
-kUpperAndLowerCaseSelector = 0 # deprecated
-kAllCapsSelector  = 1 # deprecated
-kAllLowerCaseSelector  = 2 # deprecated
-kSmallCapsSelector  = 3 # deprecated
-kInitialCapsSelector  = 4 # deprecated
-kInitialCapsAndSmallCapsSelector = 5 # deprecated
+kUpperAndLowerCaseSelector = 0  # deprecated
+kAllCapsSelector = 1  # deprecated
+kAllLowerCaseSelector = 2  # deprecated
+kSmallCapsSelector = 3  # deprecated
+kInitialCapsSelector = 4  # deprecated
+kInitialCapsAndSmallCapsSelector = 5  # deprecated
 
 # Selectors for feature type kVerticalSubstitutionType
 kSubstituteVerticalFormsOnSelector = 0
@@ -121,13 +121,13 @@ kDecomposeDiacriticsSelector = 2
 
 # Selectors for feature type kVerticalPositionType
 kNormalPositionSelector = 0
-kSuperiorsSelector  = 1
-kInferiorsSelector  = 2
-kOrdinalsSelector  = 3
+kSuperiorsSelector = 1
+kInferiorsSelector = 2
+kOrdinalsSelector = 3
 kScientificInferiorsSelector = 4
 
 # Selectors for feature type kFractionsType
-kNoFractionsSelector  = 0
+kNoFractionsSelector = 0
 kVerticalFractionsSelector = 1
 kDiagonalFractionsSelector = 2
 
@@ -158,37 +158,37 @@ kSlashToDivideOnSelector = 4
 kSlashToDivideOffSelector = 5
 kInequalityLigaturesOnSelector = 6
 kInequalityLigaturesOffSelector = 7
-kExponentsOnSelector  = 8
-kExponentsOffSelector  = 9
+kExponentsOnSelector = 8
+kExponentsOffSelector = 9
 kMathematicalGreekOnSelector = 10
 kMathematicalGreekOffSelector = 11
 
 # Selectors for feature type kOrnamentSetsType
-kNoOrnamentsSelector  = 0
-kDingbatsSelector  = 1
-kPiCharactersSelector  = 2
-kFleuronsSelector  = 3
+kNoOrnamentsSelector = 0
+kDingbatsSelector = 1
+kPiCharactersSelector = 2
+kFleuronsSelector = 3
 kDecorativeBordersSelector = 4
 kInternationalSymbolsSelector = 5
-kMathSymbolsSelector  = 6
+kMathSymbolsSelector = 6
 
 # Selectors for feature type kCharacterAlternativesType
-kNoAlternatesSelector  = 0
+kNoAlternatesSelector = 0
 
 # Selectors for feature type kDesignComplexityType
-kDesignLevel1Selector  = 0
-kDesignLevel2Selector  = 1
-kDesignLevel3Selector  = 2
-kDesignLevel4Selector  = 3
-kDesignLevel5Selector  = 4
+kDesignLevel1Selector = 0
+kDesignLevel2Selector = 1
+kDesignLevel3Selector = 2
+kDesignLevel4Selector = 3
+kDesignLevel5Selector = 4
 
 # Selectors for feature type kStyleOptionsType
 kNoStyleOptionsSelector = 0
-kDisplayTextSelector  = 1
-kEngravedTextSelector  = 2
+kDisplayTextSelector = 1
+kEngravedTextSelector = 2
 kIlluminatedCapsSelector = 3
-kTitlingCapsSelector  = 4
-kTallCapsSelector  = 5
+kTitlingCapsSelector = 4
+kTallCapsSelector = 5
 
 # Selectors for feature type kCharacterShapeType
 kTraditionalCharactersSelector = 0
@@ -233,7 +233,7 @@ kHanjaToHangulAltTwoSelector = 8
 kHanjaToHangulAltThreeSelector = 9
 
 # Selectors for feature type kAnnotationType
-kNoAnnotationSelector  = 0
+kNoAnnotationSelector = 0
 kBoxAnnotationSelector = 1
 kRoundedBoxAnnotationSelector = 2
 kCircleAnnotationSelector = 3
@@ -263,10 +263,10 @@ kTranscodingCompositionOnSelector = 4
 kTranscodingCompositionOffSelector = 5
 
 # Selectors for feature type kRubyKanaType
-kNoRubyKanaSelector  = 0 # deprecated - use kRubyKanaOffSelector instead
-kRubyKanaSelector  = 1 # deprecated - use kRubyKanaOnSelector instead
-kRubyKanaOnSelector  = 2
-kRubyKanaOffSelector  = 3
+kNoRubyKanaSelector = 0  # deprecated - use kRubyKanaOffSelector instead
+kRubyKanaSelector = 1  # deprecated - use kRubyKanaOnSelector instead
+kRubyKanaOnSelector = 2
+kRubyKanaOffSelector = 3
 
 # Selectors for feature type kCJKSymbolAlternativesType
 kNoCJKSymbolAlternativesSelector = 0
@@ -289,8 +289,8 @@ kCJKVerticalRomanCenteredSelector = 0
 kCJKVerticalRomanHBaselineSelector = 1
 
 # Selectors for feature type kItalicCJKRomanType
-kNoCJKItalicRomanSelector = 0 # deprecated - use kCJKItalicRomanOffSelector instead
-kCJKItalicRomanSelector = 1 # deprecated - use kCJKItalicRomanOnSelector instead
+kNoCJKItalicRomanSelector = 0  # deprecated - use kCJKItalicRomanOffSelector instead
+kCJKItalicRomanSelector = 1  # deprecated - use kCJKItalicRomanOnSelector instead
 kCJKItalicRomanOnSelector = 2
 kCJKItalicRomanOffSelector = 3
 

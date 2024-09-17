@@ -22,23 +22,23 @@ __all__ = ['LatexFormatter']
 
 def escape_tex(text, commandprefix):
     return text.replace('\\', '\x00'). \
-                replace('{', '\x01'). \
-                replace('}', '\x02'). \
-                replace('\x00', r'\%sZbs{}' % commandprefix). \
-                replace('\x01', r'\%sZob{}' % commandprefix). \
-                replace('\x02', r'\%sZcb{}' % commandprefix). \
-                replace('^', r'\%sZca{}' % commandprefix). \
-                replace('_', r'\%sZus{}' % commandprefix). \
-                replace('&', r'\%sZam{}' % commandprefix). \
-                replace('<', r'\%sZlt{}' % commandprefix). \
-                replace('>', r'\%sZgt{}' % commandprefix). \
-                replace('#', r'\%sZsh{}' % commandprefix). \
-                replace('%', r'\%sZpc{}' % commandprefix). \
-                replace('$', r'\%sZdl{}' % commandprefix). \
-                replace('-', r'\%sZhy{}' % commandprefix). \
-                replace("'", r'\%sZsq{}' % commandprefix). \
-                replace('"', r'\%sZdq{}' % commandprefix). \
-                replace('~', r'\%sZti{}' % commandprefix)
+        replace('{', '\x01'). \
+        replace('}', '\x02'). \
+        replace('\x00', r'\%sZbs{}' % commandprefix). \
+        replace('\x01', r'\%sZob{}' % commandprefix). \
+        replace('\x02', r'\%sZcb{}' % commandprefix). \
+        replace('^', r'\%sZca{}' % commandprefix). \
+        replace('_', r'\%sZus{}' % commandprefix). \
+        replace('&', r'\%sZam{}' % commandprefix). \
+        replace('<', r'\%sZlt{}' % commandprefix). \
+        replace('>', r'\%sZgt{}' % commandprefix). \
+        replace('#', r'\%sZsh{}' % commandprefix). \
+        replace('%', r'\%sZpc{}' % commandprefix). \
+        replace('$', r'\%sZdl{}' % commandprefix). \
+        replace('-', r'\%sZhy{}' % commandprefix). \
+        replace("'", r'\%sZsq{}' % commandprefix). \
+        replace('"', r'\%sZdq{}' % commandprefix). \
+        replace('~', r'\%sZti{}' % commandprefix)
 
 
 DOC_TEMPLATE = r'''
@@ -419,13 +419,14 @@ class LatexFormatter(Formatter):
                 'latin_1': 'latin1',
                 'iso_8859_1': 'latin1',
             }.get(encoding.replace('-', '_'), encoding)
-            realoutfile.write(DOC_TEMPLATE %
-                dict(docclass  = self.docclass,
-                     preamble  = self.preamble,
-                     title     = self.title,
-                     encoding  = encoding,
-                     styledefs = self.get_style_defs(),
-                     code      = outfile.getvalue()))
+            realoutfile.write(DOC_TEMPLATE % dict(
+                docclass=self.docclass,
+                preamble=self.preamble,
+                title=self.title,
+                encoding=encoding,
+                styledefs=self.get_style_defs(),
+                code=outfile.getvalue()
+            ))
 
 
 class LatexEmbeddedLexer(Lexer):
