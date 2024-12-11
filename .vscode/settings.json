@@ -4,7 +4,7 @@
 	"editor.formatOnSave": false,
 	"editor.formatOnType": false,
 	"flake8.args": [
-		"--ignore=W191,E501,E722,W503",
+		"--ignore=W191,E266,E501,E265,E722,W503",
 		"--verbose"
 	],
 	"python.analysis.extraPaths": [".."]
