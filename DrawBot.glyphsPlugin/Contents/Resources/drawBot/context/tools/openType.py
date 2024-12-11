@@ -1,5 +1,4 @@
 import os
-import AppKit
 import CoreText
 
 from fontTools.ttLib import TTFont

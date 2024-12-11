@@ -2,7 +2,7 @@ from AppKit import NSSplitView, NSColor, NSBezierPath, \
     NSSplitViewDividerStyleThick, NSSplitViewDividerStyleThin
 from objc import super
 
-from vanilla import *
+# from vanilla import *
 from vanilla.vanillaBase import VanillaBaseObject
 
 
@@ -57,12 +57,14 @@ class SplitView(VanillaBaseObject):
 
     dividerStyleDict = dict(thick=NSSplitViewDividerStyleThick, thin=NSSplitViewDividerStyleThin)
 
-    def __init__(self, posSize,
-                    paneDescriptions=list(),
-                    isVertical=True,
-                    dividerStyle="thick",
-                    dividerThickness=8,
-                    autoSaveName=None):
+    def __init__(
+        self, posSize,
+        paneDescriptions=list(),
+        isVertical=True,
+        dividerStyle="thick",
+        dividerThickness=8,
+        autoSaveName=None
+    ):
 
         self._setupView(self.nsSplitView, posSize)
         self._nsObject.setVertical_(isVertical)

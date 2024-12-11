@@ -20,10 +20,10 @@ class IgorStyle(Style):
     default_style = ""
 
     styles = {
-        Comment:                'italic #FF0000',
-        Keyword:                '#0000FF',
-        Name.Function:          '#C34E00',
-        Name.Decorator:         '#CC00A3',
-        Name.Class:             '#007575',
-        String:                 '#009C00'
+        Comment: 'italic #FF0000',
+        Keyword: '#0000FF',
+        Name.Function: '#C34E00',
+        Name.Decorator: '#CC00A3',
+        Name.Class: '#007575',
+        String: '#009C00'
     }

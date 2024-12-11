@@ -39,9 +39,9 @@ __all__ = ['ImageFormatter', 'GifImageFormatter', 'JpgImageFormatter',
 
 # For some unknown reason every font calls it something different
 STYLES = {
-    'NORMAL':     ['', 'Roman', 'Book', 'Normal', 'Regular', 'Medium'],
-    'ITALIC':     ['Oblique', 'Italic'],
-    'BOLD':       ['Bold'],
+    'NORMAL': ['', 'Roman', 'Book', 'Normal', 'Regular', 'Medium'],
+    'ITALIC': ['Oblique', 'Italic'],
+    'BOLD': ['Bold'],
     'BOLDITALIC': ['Bold Oblique', 'Bold Italic'],
 }
 
@@ -153,7 +153,7 @@ class FontManager:
         for suffix in ('', ' (TrueType)'):
             for style in styles:
                 try:
-                    valname = '%s%s%s' % (basename, style and ' '+style, suffix)
+                    valname = '%s%s%s' % (basename, style and ' ' + style, suffix)
                     val, _ = _winreg.QueryValueEx(key, valname)
                     return val
                 except EnvironmentError:
@@ -166,10 +166,12 @@ class FontManager:
 
     def _create_win(self):
         lookuperror = None
-        keynames = [ (_winreg.HKEY_CURRENT_USER, r'Software\Microsoft\Windows NT\CurrentVersion\Fonts'),
-                     (_winreg.HKEY_CURRENT_USER, r'Software\Microsoft\Windows\CurrentVersion\Fonts'),
-                     (_winreg.HKEY_LOCAL_MACHINE, r'Software\Microsoft\Windows NT\CurrentVersion\Fonts'),
-                     (_winreg.HKEY_LOCAL_MACHINE, r'Software\Microsoft\Windows\CurrentVersion\Fonts') ]
+        keynames = [
+            (_winreg.HKEY_CURRENT_USER, r'Software\Microsoft\Windows NT\CurrentVersion\Fonts'),
+            (_winreg.HKEY_CURRENT_USER, r'Software\Microsoft\Windows\CurrentVersion\Fonts'),
+            (_winreg.HKEY_LOCAL_MACHINE, r'Software\Microsoft\Windows NT\CurrentVersion\Fonts'),
+            (_winreg.HKEY_LOCAL_MACHINE, r'Software\Microsoft\Windows\CurrentVersion\Fonts')
+        ]
         for keyname in keynames:
             try:
                 key = _winreg.OpenKey(*keyname)
@@ -388,8 +390,8 @@ class ImageFormatter(Formatter):
         self.line_number_step = get_int_opt(options, 'line_number_step', 1)
         self.line_number_start = get_int_opt(options, 'line_number_start', 1)
         if self.line_numbers:
-            self.line_number_width = (self.fontw * self.line_number_chars +
-                                      self.line_number_pad * 2)
+            self.line_number_width = (self.fontw * self.line_number_chars
+                                      + self.line_number_pad * 2)
         else:
             self.line_number_width = 0
         self.hl_lines = []
@@ -506,8 +508,8 @@ class ImageFormatter(Formatter):
                     self._draw_text(
                         self._get_text_pos(linelength, lineno),
                         temp,
-                        font = self._get_style_font(style),
-                        fill = self._get_text_color(style)
+                        font=self._get_style_font(style),
+                        fill=self._get_text_color(style)
                     )
                     temp_width, temp_hight = self.fonts.get_text_size(temp)
                     linelength += temp_width

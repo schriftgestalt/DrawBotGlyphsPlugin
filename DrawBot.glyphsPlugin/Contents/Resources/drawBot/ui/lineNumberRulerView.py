@@ -61,9 +61,11 @@ class LineNumberNSRulerView(NSRulerView):
         super(LineNumberNSRulerView, self).setClientView_(view)
 
         if view is not None and isinstance(view, NSTextView):
-            NSNotificationCenter.defaultCenter().addObserver_selector_name_object_(self, "textDidChange:",
-                                                    NSTextStorageDidProcessEditingNotification,
-                                                    view.textStorage())
+            NSNotificationCenter.defaultCenter().addObserver_selector_name_object_(
+                self, "textDidChange:",
+                NSTextStorageDidProcessEditingNotification,
+                view.textStorage()
+            )
 
     def lineIndices(self):
         if self._lineIndices is None:

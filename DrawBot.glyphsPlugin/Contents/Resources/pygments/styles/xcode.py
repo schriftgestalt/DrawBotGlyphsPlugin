@@ -11,7 +11,7 @@
 
 from pygments.style import Style
 from pygments.token import Keyword, Name, Comment, String, Error, \
-     Number, Operator, Literal
+    Number, Operator, Literal
 
 
 class XcodeStyle(Style):
@@ -22,30 +22,30 @@ class XcodeStyle(Style):
     default_style = ''
 
     styles = {
-        Comment:                '#177500',
-        Comment.Preproc:        '#633820',
+        Comment: '#177500',
+        Comment.Preproc: '#633820',
 
-        String:                 '#C41A16',
-        String.Char:            '#2300CE',
+        String: '#C41A16',
+        String.Char: '#2300CE',
 
-        Operator:               '#000000',
+        Operator: '#000000',
 
-        Keyword:                '#A90D91',
+        Keyword: '#A90D91',
 
-        Name:                   '#000000',
-        Name.Attribute:         '#836C28',
-        Name.Class:             '#3F6E75',
-        Name.Function:          '#000000',
-        Name.Builtin:           '#A90D91',
+        Name: '#000000',
+        Name.Attribute: '#836C28',
+        Name.Class: '#3F6E75',
+        Name.Function: '#000000',
+        Name.Builtin: '#A90D91',
         # In Obj-C code this token is used to colour Cocoa types
-        Name.Builtin.Pseudo:    '#5B269A',
-        Name.Variable:          '#000000',
-        Name.Tag:               '#000000',
-        Name.Decorator:         '#000000',
+        Name.Builtin.Pseudo: '#5B269A',
+        Name.Variable: '#000000',
+        Name.Tag: '#000000',
+        Name.Decorator: '#000000',
         # Workaround for a BUG here: lexer treats multiline method signatres as labels
-        Name.Label:             '#000000',
+        Name.Label: '#000000',
 
-        Literal:                '#1C01CE',
-        Number:                 '#1C01CE',
-        Error:                  '#000000',
+        Literal: '#1C01CE',
+        Number: '#1C01CE',
+        Error: '#000000',
     }

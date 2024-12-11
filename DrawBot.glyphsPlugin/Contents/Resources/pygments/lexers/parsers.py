@@ -445,8 +445,8 @@ class AntlrLexer(RegexLexer):
             include('whitespace'),
             include('comments'),
             (r'\{', Punctuation),
-            (r'(' + _id + r')(\s*)(=)(\s*)(' +
-             '|'.join((_id, _STRING_LITERAL, _INT, r'\*')) + r')(\s*)(;)',
+            (r'(' + _id + r')(\s*)(=)(\s*)('
+             + '|'.join((_id, _STRING_LITERAL, _INT, r'\*')) + r')(\s*)(;)',
              bygroups(Name.Variable, Whitespace, Punctuation, Whitespace,
                       Text, Whitespace, Punctuation)),
             (r'\}', Punctuation, '#pop'),

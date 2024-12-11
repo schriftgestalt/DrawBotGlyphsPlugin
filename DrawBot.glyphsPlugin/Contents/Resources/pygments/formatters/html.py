@@ -696,9 +696,9 @@ class HtmlFormatter(Formatter):
         # content in the other cell also is wrapped in a div, some browsers in
         # some configurations seem to mess up the formatting...
         yield 0, (
-            '<table class="%stable">' % self.cssclass +
-            '<tr><td class="linenos"><div class="linenodiv"><pre>' +
-            ls + '</pre></div></td><td class="code">'
+            '<table class="%stable">' % self.cssclass
+            + '<tr><td class="linenos"><div class="linenodiv"><pre>'
+            + ls + '</pre></div></td><td class="code">'
         )
         yield 0, dummyoutfile.getvalue()
         yield 0, '</td></tr></table>'
@@ -761,15 +761,15 @@ class HtmlFormatter(Formatter):
 
     def _wrap_div(self, inner):
         style = []
-        if (self.noclasses and not self.nobackground and
-                self.style.background_color is not None):
+        if (self.noclasses and not self.nobackground
+                and self.style.background_color is not None):
             style.append('background: %s' % (self.style.background_color,))
         if self.cssstyles:
             style.append(self.cssstyles)
         style = '; '.join(style)
 
-        yield 0, ('<div' + (self.cssclass and ' class="%s"' % self.cssclass) +
-                  (style and (' style="%s"' % style)) + '>')
+        yield 0, ('<div' + (self.cssclass and ' class="%s"' % self.cssclass)
+                  + (style and (' style="%s"' % style)) + '>')
         yield from inner
         yield 0, '</div>\n'
 

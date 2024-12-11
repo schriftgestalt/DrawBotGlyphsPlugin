@@ -8,8 +8,8 @@ from fontTools.misc.xmlWriter import XMLWriter
 
 from fontTools.misc.transform import Transform
 
-from .tools.openType import getFeatureTagsForFontAttributes
-from .baseContext import BaseContext, GraphicsState, Shadow, Color, Gradient, BezierPath, FormattedString
+# from .tools.openType import getFeatureTagsForFontAttributes
+from .baseContext import BaseContext, GraphicsState, Shadow, Color, Gradient, FormattedString
 from .imageContext import _makeBitmapImageRep
 
 from drawBot.misc import warnings, formatNumber
@@ -691,7 +691,7 @@ class SVGContext(BaseContext):
         x, y, w, h = xywh
         rectData = dict(
             x=x,
-            y=self.height-y-h,
+            y=self.height - y - h,
             width=w,
             height=h,
             fill="transparent",

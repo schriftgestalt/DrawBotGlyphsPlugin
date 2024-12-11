@@ -40,24 +40,24 @@ class Algol_NuStyle(Style):
     default_style = ""
 
     styles = {
-        Comment:                   "italic #888",
-        Comment.Preproc:           "bold noitalic #888",
-        Comment.Special:           "bold noitalic #888",
+        Comment: "italic #888",
+        Comment.Preproc: "bold noitalic #888",
+        Comment.Special: "bold noitalic #888",
 
-        Keyword:                   "bold",
-        Keyword.Declaration:       "italic",
+        Keyword: "bold",
+        Keyword.Declaration: "italic",
 
-        Name.Builtin:              "bold italic",
-        Name.Builtin.Pseudo:       "bold italic",
-        Name.Namespace:            "bold italic #666",
-        Name.Class:                "bold italic #666",
-        Name.Function:             "bold italic #666",
-        Name.Variable:             "bold italic #666",
-        Name.Constant:             "bold italic #666",
+        Name.Builtin: "bold italic",
+        Name.Builtin.Pseudo: "bold italic",
+        Name.Namespace: "bold italic #666",
+        Name.Class: "bold italic #666",
+        Name.Function: "bold italic #666",
+        Name.Variable: "bold italic #666",
+        Name.Constant: "bold italic #666",
 
-        Operator.Word:             "bold",
+        Operator.Word: "bold",
 
-        String:                    "italic #666",
+        String: "italic #666",
 
-        Error:                     "border:#FF0000"
+        Error: "border:#FF0000"
     }

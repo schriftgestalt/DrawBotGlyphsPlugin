@@ -70,7 +70,7 @@ class PDFContext(BaseContext):
             multipage = True
         if not multipage:
             pdfDocument = Quartz.PDFDocument.alloc().initWithData_(data)
-            page = pdfDocument.pageAtIndex_(pdfDocument.pageCount()-1)
+            page = pdfDocument.pageAtIndex_(pdfDocument.pageCount() - 1)
             data = page.dataRepresentation()
         data.writeToFile_atomically_(path, True)
 
@@ -170,7 +170,7 @@ class PDFContext(BaseContext):
                 self._save()
                 if url is not None:
                     self._save()
-                    Quartz.CGContextSetTextPosition(self._pdfContext, x+originX, y+originY+baselineShift)
+                    Quartz.CGContextSetTextPosition(self._pdfContext, x + originX, y + originY + baselineShift)
                     urlBox = CoreText.CTRunGetImageBounds(ctRun, self._pdfContext, (0, 0))
                     urlBox = Quartz.CGContextConvertRectToDeviceSpace(self._pdfContext, urlBox)
                     Quartz.CGPDFContextSetURLForRect(self._pdfContext, url, urlBox)
@@ -186,13 +186,13 @@ class PDFContext(BaseContext):
                         self._state.fillColor = None
                         self._state.cmykColor = None
                         Quartz.CGContextSetTextDrawingMode(self._pdfContext, Quartz.kCGTextFill)
-                        Quartz.CGContextSetTextPosition(self._pdfContext, x+originX, y+originY+baselineShift)
+                        Quartz.CGContextSetTextPosition(self._pdfContext, x + originX, y + originY + baselineShift)
                         CoreText.CTRunDraw(ctRun, self._pdfContext, (0, 0))
                         self._restore()
                 if canDoGradients and self._state.gradient is not None:
                     self._save()
                     Quartz.CGContextSetTextDrawingMode(self._pdfContext, Quartz.kCGTextClip)
-                    Quartz.CGContextSetTextPosition(self._pdfContext, x+originX, y+originY+baselineShift)
+                    Quartz.CGContextSetTextPosition(self._pdfContext, x + originX, y + originY + baselineShift)
                     CoreText.CTRunDraw(ctRun, self._pdfContext, (0, 0))
                     self._pdfGradient(self._state.gradient)
                     self._restore()
@@ -219,13 +219,13 @@ class PDFContext(BaseContext):
                         # simple solution: draw it twice...
                         drawingMode = Quartz.kCGTextFill
                         Quartz.CGContextSetTextDrawingMode(self._pdfContext, drawingMode)
-                        Quartz.CGContextSetTextPosition(self._pdfContext, x+originX, y+originY+baselineShift)
+                        Quartz.CGContextSetTextPosition(self._pdfContext, x + originX, y + originY + baselineShift)
                         CoreText.CTRunDraw(ctRun, self._pdfContext, (0, 0))
                         drawingMode = Quartz.kCGTextStroke
 
                 if drawingMode is not None:
                     Quartz.CGContextSetTextDrawingMode(self._pdfContext, drawingMode)
-                    Quartz.CGContextSetTextPosition(self._pdfContext, x+originX, y+originY+baselineShift)
+                    Quartz.CGContextSetTextPosition(self._pdfContext, x + originX, y + originY + baselineShift)
                     CoreText.CTRunDraw(ctRun, self._pdfContext, (0, 0))
                 self._restore()
 
@@ -257,7 +257,7 @@ class PDFContext(BaseContext):
                 elif _isGIF:
                     if pageNumber is None:
                         pageNumber = gifTools.gifFrameCount(url)
-                    image = gifTools.gifFrameAtIndex(url, pageNumber-1)
+                    image = gifTools.gifFrameAtIndex(url, pageNumber - 1)
                     data = image.TIFFRepresentation()
                     source = Quartz.CGImageSourceCreateWithData(data, {})
                     if source is not None:

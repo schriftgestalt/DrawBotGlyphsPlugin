@@ -22,12 +22,12 @@ class RrtStyle(Style):
     highlight_color = '#0000ff'
 
     styles = {
-        Comment:            '#00ff00',
-        Name.Function:      '#ffff00',
-        Name.Variable:      '#eedd82',
-        Name.Constant:      '#7fffd4',
-        Keyword:            '#ff0000',
-        Comment.Preproc:    '#e5e5e5',
-        String:             '#87ceeb',
-        Keyword.Type:       '#ee82ee',
+        Comment: '#00ff00',
+        Name.Function: '#ffff00',
+        Name.Variable: '#eedd82',
+        Name.Constant: '#7fffd4',
+        Keyword: '#ff0000',
+        Comment.Preproc: '#e5e5e5',
+        String: '#87ceeb',
+        Keyword.Type: '#ee82ee',
     }

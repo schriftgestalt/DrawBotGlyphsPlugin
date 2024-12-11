@@ -11,7 +11,7 @@
 
 from pygments.style import Style
 from pygments.token import Keyword, Name, Comment, String, Error, \
-     Number, Operator, Generic, Whitespace, Token
+    Number, Operator, Generic, Whitespace, Token
 
 
 class VimStyle(Style):
@@ -24,40 +24,40 @@ class VimStyle(Style):
     default_style = "#cccccc"
 
     styles = {
-        Token:                     "#cccccc",
-        Whitespace:                "",
-        Comment:                   "#000080",
-        Comment.Preproc:           "",
-        Comment.Special:           "bold #cd0000",
+        Token: "#cccccc",
+        Whitespace: "",
+        Comment: "#000080",
+        Comment.Preproc: "",
+        Comment.Special: "bold #cd0000",
 
-        Keyword:                   "#cdcd00",
-        Keyword.Declaration:       "#00cd00",
-        Keyword.Namespace:         "#cd00cd",
-        Keyword.Pseudo:            "",
-        Keyword.Type:              "#00cd00",
+        Keyword: "#cdcd00",
+        Keyword.Declaration: "#00cd00",
+        Keyword.Namespace: "#cd00cd",
+        Keyword.Pseudo: "",
+        Keyword.Type: "#00cd00",
 
-        Operator:                  "#3399cc",
-        Operator.Word:             "#cdcd00",
+        Operator: "#3399cc",
+        Operator.Word: "#cdcd00",
 
-        Name:                      "",
-        Name.Class:                "#00cdcd",
-        Name.Builtin:              "#cd00cd",
-        Name.Exception:            "bold #666699",
-        Name.Variable:             "#00cdcd",
+        Name: "",
+        Name.Class: "#00cdcd",
+        Name.Builtin: "#cd00cd",
+        Name.Exception: "bold #666699",
+        Name.Variable: "#00cdcd",
 
-        String:                    "#cd0000",
-        Number:                    "#cd00cd",
+        String: "#cd0000",
+        Number: "#cd00cd",
 
-        Generic.Heading:           "bold #000080",
-        Generic.Subheading:        "bold #800080",
-        Generic.Deleted:           "#cd0000",
-        Generic.Inserted:          "#00cd00",
-        Generic.Error:             "#FF0000",
-        Generic.Emph:              "italic",
-        Generic.Strong:            "bold",
-        Generic.Prompt:            "bold #000080",
-        Generic.Output:            "#888",
-        Generic.Traceback:         "#04D",
+        Generic.Heading: "bold #000080",
+        Generic.Subheading: "bold #800080",
+        Generic.Deleted: "#cd0000",
+        Generic.Inserted: "#00cd00",
+        Generic.Error: "#FF0000",
+        Generic.Emph: "italic",
+        Generic.Strong: "bold",
+        Generic.Prompt: "bold #000080",
+        Generic.Output: "#888",
+        Generic.Traceback: "#04D",
 
-        Error:                     "border:#FF0000"
+        Error: "border:#FF0000"
     }

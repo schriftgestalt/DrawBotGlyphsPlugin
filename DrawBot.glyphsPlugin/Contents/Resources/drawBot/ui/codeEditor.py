@@ -6,7 +6,7 @@ import re
 import sys
 
 from pygments.lexers import Python3Lexer, get_lexer_by_name
-from pygments.token import *
+from pygments.token import Generic, Token, Text, Error, Punctuation, Keyword, Number, Name, Operator, Comment, String, string_to_tokentype
 from pygments.style import Style
 from pygments.styles.default import DefaultStyle
 
@@ -16,7 +16,7 @@ try:
 except Exception:
     hasJedi = False
 
-from vanilla import *
+from vanilla import Sheet, TextBox, EditText, TextEditor, Button
 from vanilla.py23 import python_method
 
 from .lineNumberRulerView import LineNumberNSRulerView
@@ -54,45 +54,45 @@ fallbackTracebackAttributes = dict(fallbackTypeAttributes)
 fallbackTracebackAttributes[AppKit.NSForegroundColorAttributeName] = AppKit.NSColor.redColor()
 
 fallbackStyles = [
-    (Token,               '#000000'),
+    (Token, '#000000'),
 
-    (Generic.Heading,     '#813E94'),
-    (Generic.Subheading,  '#1A8BAD'),
-    (Generic.Strong,      '#6F00FF'),
-    (Generic.Emph,        '#FF00B3'),
+    (Generic.Heading, '#813E94'),
+    (Generic.Subheading, '#1A8BAD'),
+    (Generic.Strong, '#6F00FF'),
+    (Generic.Emph, '#FF00B3'),
 
-    (Text,                ''),
-    (Error,               '#FF0000'),
-    (Punctuation,         '#6E6E6E'),
+    (Text, ''),
+    (Error, '#FF0000'),
+    (Punctuation, '#6E6E6E'),
 
-    (Keyword,             '#4978FC'),
-    (Keyword.Namespace,   '#1950FD'),
+    (Keyword, '#4978FC'),
+    (Keyword.Namespace, '#1950FD'),
 
-    (Number,              '#CC5858'),
-    (Number.Float,        ''),
-    (Number.Oct,          ''),
-    (Number.Hex,          ''),
+    (Number, '#CC5858'),
+    (Number.Float, ''),
+    (Number.Oct, ''),
+    (Number.Hex, ''),
 
-    (Name,                ''),
-    (Name.Tag,            '#fb660a'),
-    (Name.Variable,       '#fb660a'),
-    (Name.Attribute,      '#ff0086'),
-    (Name.Function,       '#ff0086'),
-    (Name.Class,          '#ff0086'),
-    (Name.Constant,       '#0086d2'),
-    (Name.Namespace,      ''),
-    (Name.Builtin,        '#31A73E'),
+    (Name, ''),
+    (Name.Tag, '#fb660a'),
+    (Name.Variable, '#fb660a'),
+    (Name.Attribute, '#ff0086'),
+    (Name.Function, '#ff0086'),
+    (Name.Class, '#ff0086'),
+    (Name.Constant, '#0086d2'),
+    (Name.Namespace, ''),
+    (Name.Builtin, '#31A73E'),
     (Name.Builtin.Pseudo, '#FF8700'),
-    (Name.Exception,      '#FF1400'),
-    (Name.Decorator,      ''),
+    (Name.Exception, '#FF1400'),
+    (Name.Decorator, ''),
 
-    (Operator,            '#6D37C9'),
-    (Operator.Word,       '#6D37C9'),
+    (Operator, '#6D37C9'),
+    (Operator.Word, '#6D37C9'),
 
-    (Comment,             '#A3A3A3'),
+    (Comment, '#A3A3A3'),
 
-    (String,              '#FC00E7'),
-    (String.Doc,          '#FC00E7'),
+    (String, '#FC00E7'),
+    (String.Doc, '#FC00E7'),
 ]
 
 fallbackStyleDict = {}
@@ -257,7 +257,7 @@ _multiLineRE = re.compile(
 _multiLineParts = [
     "\'\'\'",
     "\"\"\"",
-    "\*", "*/",
+    r"\*", "*/",
     "<!--", "--!>"
     "# >>>", "# <<<",
 ]
@@ -319,6 +319,7 @@ languagesIDEBehavior["Python 3"] = languagesIDEBehavior["Python"]
 
 downArrowSelectionDirection = 0
 upArrowSelectionDirection = 1
+
 
 def _floatRepr(f):
     """In Python 3, we may get float representations that are too precise,
@@ -1414,7 +1415,7 @@ class CodeEditor(TextEditor):
         if codeAttr["indentSize"] is not None:
             self.setIndentSize(codeAttr["indentSize"])
         if codeAttr["languagesIDEBehavior"] is not None:
-            _languagesIDEBehavior.update(codeAttr["languagesIDEBehavior"])
+            self._languagesIDEBehavior.update(codeAttr["languagesIDEBehavior"])
         self.setLanguagesIDEBehavior(languagesIDEBehavior)
 
         if codeAttr["showlineNumbers"] is None:

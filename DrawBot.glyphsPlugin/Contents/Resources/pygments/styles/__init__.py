@@ -15,42 +15,42 @@ from pygments.util import ClassNotFound
 
 #: Maps style names to 'submodule::classname'.
 STYLE_MAP = {
-    'default':  'default::DefaultStyle',
-    'emacs':    'emacs::EmacsStyle',
+    'default': 'default::DefaultStyle',
+    'emacs': 'emacs::EmacsStyle',
     'friendly': 'friendly::FriendlyStyle',
     'colorful': 'colorful::ColorfulStyle',
-    'autumn':   'autumn::AutumnStyle',
-    'murphy':   'murphy::MurphyStyle',
-    'manni':    'manni::ManniStyle',
-    'monokai':  'monokai::MonokaiStyle',
-    'perldoc':  'perldoc::PerldocStyle',
-    'pastie':   'pastie::PastieStyle',
-    'borland':  'borland::BorlandStyle',
-    'trac':     'trac::TracStyle',
-    'native':   'native::NativeStyle',
-    'fruity':   'fruity::FruityStyle',
-    'bw':       'bw::BlackWhiteStyle',
-    'vim':      'vim::VimStyle',
-    'vs':       'vs::VisualStudioStyle',
-    'tango':    'tango::TangoStyle',
-    'rrt':      'rrt::RrtStyle',
-    'xcode':    'xcode::XcodeStyle',
-    'igor':     'igor::IgorStyle',
+    'autumn': 'autumn::AutumnStyle',
+    'murphy': 'murphy::MurphyStyle',
+    'manni': 'manni::ManniStyle',
+    'monokai': 'monokai::MonokaiStyle',
+    'perldoc': 'perldoc::PerldocStyle',
+    'pastie': 'pastie::PastieStyle',
+    'borland': 'borland::BorlandStyle',
+    'trac': 'trac::TracStyle',
+    'native': 'native::NativeStyle',
+    'fruity': 'fruity::FruityStyle',
+    'bw': 'bw::BlackWhiteStyle',
+    'vim': 'vim::VimStyle',
+    'vs': 'vs::VisualStudioStyle',
+    'tango': 'tango::TangoStyle',
+    'rrt': 'rrt::RrtStyle',
+    'xcode': 'xcode::XcodeStyle',
+    'igor': 'igor::IgorStyle',
     'paraiso-light': 'paraiso_light::ParaisoLightStyle',
     'paraiso-dark': 'paraiso_dark::ParaisoDarkStyle',
     'lovelace': 'lovelace::LovelaceStyle',
-    'algol':    'algol::AlgolStyle',
+    'algol': 'algol::AlgolStyle',
     'algol_nu': 'algol_nu::Algol_NuStyle',
-    'arduino':  'arduino::ArduinoStyle',
+    'arduino': 'arduino::ArduinoStyle',
     'rainbow_dash': 'rainbow_dash::RainbowDashStyle',
-    'abap':     'abap::AbapStyle',
+    'abap': 'abap::AbapStyle',
     'solarized-dark': 'solarized::SolarizedDarkStyle',
     'solarized-light': 'solarized::SolarizedLightStyle',
-    'sas':         'sas::SasStyle',
-    'stata':       'stata_light::StataLightStyle',
+    'sas': 'sas::SasStyle',
+    'stata': 'stata_light::StataLightStyle',
     'stata-light': 'stata_light::StataLightStyle',
-    'stata-dark':  'stata_dark::StataDarkStyle',
-    'inkpot':      'inkpot::InkPotStyle',
+    'stata-dark': 'stata_dark::StataDarkStyle',
+    'inkpot': 'inkpot::InkPotStyle',
 }
 
 
@@ -70,8 +70,8 @@ def get_style_by_name(name):
     try:
         mod = __import__('pygments.styles.' + mod, None, None, [cls])
     except ImportError:
-        raise ClassNotFound("Could not find style module %r" % mod +
-                         (builtin and ", though it should be builtin") + ".")
+        raise ClassNotFound("Could not find style module %r" % mod
+                            + (builtin and ", though it should be builtin") + ".")
     try:
         return getattr(mod, cls)
     except AttributeError:

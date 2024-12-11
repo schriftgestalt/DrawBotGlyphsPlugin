@@ -664,8 +664,8 @@ class PythonConsoleLexer(Lexer):
                         insertions, pylexer.get_tokens_unprocessed(curcode))
                     curcode = ''
                     insertions = []
-                if (line.startswith('Traceback (most recent call last):') or
-                        re.match('  File "[^"]+", line \\d+\\n$', line)):
+                if (line.startswith('Traceback (most recent call last):')
+                        or re.match('  File "[^"]+", line \\d+\\n$', line)):
                     tb = 1
                     curtb = line
                     tbindex = match.start()
@@ -676,7 +676,7 @@ class PythonConsoleLexer(Lexer):
                     if not (line.startswith(' ') or line.strip() == '...'):
                         tb = 0
                         for i, t, v in tblexer.get_tokens_unprocessed(curtb):
-                            yield tbindex+i, t, v
+                            yield tbindex + i, t, v
                         curtb = ''
                 else:
                     yield match.start(), Generic.Output, line
@@ -685,7 +685,7 @@ class PythonConsoleLexer(Lexer):
                                      pylexer.get_tokens_unprocessed(curcode))
         if curtb:
             for i, t, v in tblexer.get_tokens_unprocessed(curtb):
-                yield tbindex+i, t, v
+                yield tbindex + i, t, v
 
 
 class PythonTracebackLexer(RegexLexer):
@@ -996,7 +996,7 @@ class DgLexer(RegexLexer):
                 'float', 'frozenset', 'int', 'list', 'list\'', 'memoryview', 'object',
                 'property', 'range', 'set', 'set\'', 'slice', 'staticmethod', 'str',
                 'super', 'tuple', 'tuple\'', 'type'),
-                   prefix=r'(?<!\.)', suffix=r'(?![\'\w])'),
+                prefix=r'(?<!\.)', suffix=r'(?![\'\w])'),
              Name.Builtin),
             (words((
                 '__import__', 'abs', 'all', 'any', 'bin', 'bind', 'chr', 'cmp', 'compile',
@@ -1007,7 +1007,7 @@ class DgLexer(RegexLexer):
                 'locals', 'map', 'max', 'min', 'next', 'oct', 'open', 'ord', 'pow',
                 'print', 'repr', 'reversed', 'round', 'setattr', 'scanl1?', 'snd',
                 'sorted', 'sum', 'tail', 'take', 'takewhile', 'vars', 'zip'),
-                   prefix=r'(?<!\.)', suffix=r'(?![\'\w])'),
+                prefix=r'(?<!\.)', suffix=r'(?![\'\w])'),
              Name.Builtin),
             (r"(?<!\.)(self|Ellipsis|NotImplemented|None|True|False)(?!['\w])",
              Name.Builtin.Pseudo),
@@ -1146,6 +1146,6 @@ class NumPyLexer(PythonLexer):
                 yield index, token, value
 
     def analyse_text(text):
-        return (shebang_matches(text, r'pythonw?(3(\.\d)?)?') or
-                'import ' in text[:1000]) \
+        return (shebang_matches(text, r'pythonw?(3(\.\d)?)?')
+                or 'import ' in text[:1000]) \
             and ('import numpy' in text or 'from numpy import' in text)

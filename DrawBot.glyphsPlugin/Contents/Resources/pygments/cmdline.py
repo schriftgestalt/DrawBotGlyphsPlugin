@@ -185,8 +185,8 @@ def _print_list(what):
         info = []
         for cls in get_all_formatters():
             doc = docstring_headline(cls)
-            tup = (', '.join(cls.aliases) + ':', doc, cls.filenames and
-                   '(filenames ' + ', '.join(cls.filenames) + ')' or '')
+            tup = (', '.join(cls.aliases) + ':', doc, cls.filenames
+                   and '(filenames ' + ', '.join(cls.filenames) + ')' or '')
             info.append(tup)
         info.sort()
         for i in info:

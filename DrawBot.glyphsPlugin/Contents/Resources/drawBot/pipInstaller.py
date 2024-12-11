@@ -7,7 +7,7 @@ import sys
 import threading
 import AppKit
 from PyObjCTools.AppHelper import callAfter
-from vanilla import *
+from vanilla import Window, PopUpButton, EditText, TextBox, Button, ActionButton, ProgressSpinner
 from vanilla.dialogs import message
 from drawBot.ui.codeEditor import OutPutEditor as OutputEditor
 
@@ -26,8 +26,10 @@ class PipInstallerController:
         self.targetPath = targetPath
         self._isRunning = False
 
-        self.w = Window((640, 300), "Install Python Packages",
-                minSize=(640, 300), autosaveName="PipInstaller")
+        self.w = Window(
+            (640, 300), "Install Python Packages",
+            minSize=(640, 300), autosaveName="PipInstaller"
+        )
         self.w.getNSWindow().setTitleVisibility_(True)
 
         items = [
@@ -41,10 +43,11 @@ class PipInstallerController:
         self.pipCommandsButton.getNSPopUpButton().setBezelStyle_(AppKit.NSBezelStyleTexturedRounded)
         self.pipCommandsButton.getNSPopUpButton().setFrame_((((0, 0), (140, 35))))
 
-        self.textEntry = EditText((0, 0, 0, 0),
-                placeholder="Enter one or more package names",
-                callback=self.textEntryCallback
-            )
+        self.textEntry = EditText(
+            (0, 0, 0, 0),
+            placeholder="Enter one or more package names",
+            callback=self.textEntryCallback
+        )
         self.textEntry.getNSTextField().setBezelStyle_(AppKit.NSTextFieldRoundedBezel)
         self.textEntry.getNSTextField().setFrame_((((0, 0), (200, 35))))
 
@@ -65,23 +68,28 @@ class PipInstallerController:
         self.progressSpinner.getNSProgressIndicator().setFrame_((((0, 0), (20, 20))))
 
         toolbarItems = [
-            dict(itemIdentifier="pipCommands",
-                 label="Pip Commands",
-                 view=self.pipCommandsButton.getNSPopUpButton(),
+            dict(
+                itemIdentifier="pipCommands",
+                label="Pip Commands",
+                view=self.pipCommandsButton.getNSPopUpButton(),
             ),
-            dict(itemIdentifier="pipTextEntry",
+            dict(
+                itemIdentifier="pipTextEntry",
                 label="Pip",
                 view=self.textEntry.getNSTextField(),
             ),
-            dict(itemIdentifier="pipGo",
+            dict(
+                itemIdentifier="pipGo",
                 label="Pip",
                 view=self.goButton.getNSButton(),
             ),
-            dict(itemIdentifier="pipSpinner",
+            dict(
+                itemIdentifier="pipSpinner",
                 label="Pip",
                 view=self.progressSpinner.getNSProgressIndicator(),
             ),
-            dict(itemIdentifier="pipExtraActions",
+            dict(
+                itemIdentifier="pipExtraActions",
                 label="Pip Actions",
                 view=self.extraActionButton.getNSPopUpButton(),
             )
@@ -167,8 +175,10 @@ class PipInstallerController:
         packageNames = [arg.lower() for arg in userArguments if not arg.startswith("-")]
         extraArguments = [arg for arg in userArguments if arg.startswith("-")]
         outputLines = []
+
         def collectOutput(data):
             outputLines.append(data)
+
         def doneShowCallback(resultCode):
             if resultCode != 0:
                 self.stderrWrite("".join(outputLines))
@@ -250,8 +260,10 @@ def _testTimeout():
 
 def callExternalProcess(name, arguments, env, stdoutCallback, stderrCallback, resultCallback, timeout=120):
     def worker():
-        process = subprocess.Popen(arguments, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                   env=env, encoding="utf-8", bufsize=1)
+        process = subprocess.Popen(
+            arguments, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=env, encoding="utf-8", bufsize=1
+        )
         readers = [process.stdout, process.stderr]
         while readers:
             readyReaders, _, _ = select.select(readers, [], [], timeout)
@@ -284,8 +296,8 @@ def callExternalProcess(name, arguments, env, stdoutCallback, stderrCallback, re
 if __name__ == "__main__":
     # _testTimeout()
     appSupportPath = AppKit.NSSearchPathForDirectoriesInDomains(
-            AppKit.NSApplicationSupportDirectory,
-            AppKit.NSUserDomainMask, True)[0]
+        AppKit.NSApplicationSupportDirectory,
+        AppKit.NSUserDomainMask, True)[0]
     version = f"{sys.version_info.major}.{sys.version_info.minor}"
     dbSitePath = os.path.join(appSupportPath, f"DrawBot/Python{version}")
     PipInstallerController(dbSitePath)

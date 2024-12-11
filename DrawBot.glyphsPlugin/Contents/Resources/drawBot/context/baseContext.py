@@ -6,7 +6,7 @@ import math
 import os
 
 from fontTools.pens.basePen import BasePen
-from fontTools.ttLib import TTFont, TTLibError
+# from fontTools.ttLib import TTFont, TTLibError
 
 from drawBot.misc import DrawBotError, cmyk2rgb, warnings, transformationAtCenter
 from drawBot.macOSVersion import macOSVersion

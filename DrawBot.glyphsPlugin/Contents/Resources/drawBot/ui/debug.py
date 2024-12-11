@@ -3,7 +3,7 @@ from AppKit import NSPanel
 
 import sys
 
-from vanilla import *
+from vanilla import FloatingWindow
 
 from .codeEditor import OutPutEditor
 
@@ -26,10 +26,12 @@ class DebugWindowController(object):
     """
 
     def __init__(self):
-        self.w = ShowHideFloatingWindow((300, 500), "Debugger",
-                                    minSize=(200, 300),
-                                    autosaveName="DrawBotDebugWindow",
-                                    initiallyVisible=False)
+        self.w = ShowHideFloatingWindow(
+            (300, 500), "Debugger",
+            minSize=(200, 300),
+            autosaveName="DrawBotDebugWindow",
+            initiallyVisible=False
+        )
 
         self.w.debugText = OutPutEditor((0, 0, -0, -0), readOnly=True)
 

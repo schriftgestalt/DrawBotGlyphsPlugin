@@ -253,6 +253,7 @@ class _inherit:
     """
     Indicates the a state should inherit from its superclass.
     """
+
     def __repr__(self):
         return 'inherit'
 
@@ -394,6 +395,7 @@ class default:
 
     .. versionadded:: 2.0
     """
+
     def __init__(self, state):
         self.state = state
 
@@ -405,6 +407,7 @@ class words(Future):
 
     .. versionadded:: 2.0
     """
+
     def __init__(self, words, prefix='', suffix=''):
         self.words = words
         self.prefix = prefix

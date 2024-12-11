@@ -9,13 +9,14 @@ from signal import SIGINT
 import ctypes
 from ctypes.util import find_library
 import threading
-from .misc import getDefault
+# from .misc import getDefault
 from .macOSVersion import macOSVersion
-from objc import super
+# from objc import super
 
 
 # Pulling in CheckEventQueueForUserCancel from Carbon.framework
 CheckEventQueueForUserCancel = None
+
 
 def retrieveCheckEventQueueForUserCancelFromCarbon():
     # something to fix later
@@ -95,13 +96,14 @@ class _Helper(object):
 # Regex taken from http://legacy.python.org/dev/peps/pep-0263/
 _encodingDeclarationPattern = re.compile(r"^[ \t\v]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")
 
+
 def hasEncodingDeclaration(source):
     # An encoding declaration must occur within the first two lines of the source code
     if _encodingDeclarationPattern.match(source) is not None:
         return True
     pos = source.find("\n")
     if pos >= 0:
-        if _encodingDeclarationPattern.match(source[pos+1:]) is not None:
+        if _encodingDeclarationPattern.match(source[pos + 1:]) is not None:
             return True
     return False
 
