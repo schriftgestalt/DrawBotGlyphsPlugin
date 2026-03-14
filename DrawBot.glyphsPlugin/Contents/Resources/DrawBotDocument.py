@@ -19,13 +19,8 @@ class DrawBotPlugin(GeneralPlugin):
 
 	@objc.python_method
 	def start(self):
-		if Glyphs.buildNumber >= 3320:
-			from GlyphsApp.UI import MenuItem
-			newMenuItem = MenuItem("New Drawbot", action=self.newDocument_, target=self)
-		elif Glyphs.versionNumber >= 3.3:
-			newMenuItem = NSMenuItem("New Drawbot", callback=self.newDocument_, target=self)
-		else:
-			newMenuItem = NSMenuItem("New Drawbot", self.newDocument_)
+		newMenuItem = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("New Drawbot", self.newDocument_, "")
+		newMenuItem.setTarget_(self)
 		Glyphs.menu[FILE_MENU].insert(1, newMenuItem)
 		sys.path.append(os.path.dirname(__file__))
 
